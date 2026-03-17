@@ -16,7 +16,6 @@ guidelines/
 
 # Keep /backend but exclude logs and pycache
 backend/__pycache__/
-backend/player_data/
 backend/server*.log
 backend/server*.err
 __pycache__/
