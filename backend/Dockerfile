@@ -1,32 +1,31 @@
 # ---- Backend Dockerfile ----
-# Runs the FastAPI / Uvicorn server on Railway.
-# player_data/ is NOT baked in — upload it manually after first deploy.
+# Build context is the REPO ROOT (set by railway.json dockerfilePath).
+# All COPY paths are relative to the repo root.
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system deps (PIL needs libgomp for some Pillow wheels)
+# Install system deps (Pillow needs libgomp on some wheels)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies first (cache layer)
-COPY requirements.txt .
+COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the backend source (but not player_data — it's gitignored)
-COPY . .
+# Copy backend source only (player_data excluded via .dockerignore)
+COPY backend/ ./backend/
 
 # Railway injects $PORT; default to 8010 for local use
 ENV PORT=8010
 
-# DATA_PATH must be set to the persistent disk mount on Railway
-# e.g. /data/player_data — set this in Railway env vars after mounting a disk
+# DATA_PATH must point to the Railway persistent disk mount
+# Set this in Railway → Variables after adding a disk at /data
 ENV DATA_PATH=/data/player_data
 
-# CORS_ORIGINS — set this to your Vercel URL in Railway env vars
-# e.g. https://your-app.vercel.app
+# CORS_ORIGINS — set this in Railway → Variables to your Vercel URL
 ENV CORS_ORIGINS=http://localhost:5173
 
 EXPOSE $PORT

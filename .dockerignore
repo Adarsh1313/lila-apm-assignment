@@ -1,0 +1,23 @@
+# Exclude frontend and other heavy/irrelevant dirs from the Docker build context
+node_modules/
+dist/
+.venv/
+backend/.venv/
+.git/
+.gitignore
+*.md
+src/
+index.html
+package*.json
+postcss.config.mjs
+vite.config.ts
+context/
+guidelines/
+
+# Keep /backend but exclude logs and pycache
+backend/__pycache__/
+backend/player_data/
+backend/server*.log
+backend/server*.err
+__pycache__/
+*.py[cod]
