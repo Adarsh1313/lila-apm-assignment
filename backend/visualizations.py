@@ -63,32 +63,18 @@ def heatmap(df_clean: pd.DataFrame, data_path: Path, map_id: str, event_type: st
         & (df_clean["player_type"] == player_type)
     ]
     fig = _background_figure(data_path, map_id)
-
-    PUBG_COLORSCALE = [
-        [0.0,  "rgba(0,0,255,0)"],        # empty    → fully transparent
-        [0.1,  "rgba(0,255,128,0.3)"],    # cold     → transparent green
-        [0.3,  "rgba(0,255,0,0.5)"],      # low      → green
-        [0.5,  "rgba(255,255,0,0.65)"],   # medium   → yellow
-        [0.75, "rgba(255,128,0,0.8)"],    # high     → orange
-        [1.0,  "rgba(255,0,0,0.95)"],     # hottest  → red
-    ]
-
+    colorscale = "Blues" if player_type == "human" else "YlOrRd"
     fig.add_trace(
         go.Histogram2dContour(
-            x           = filtered["px"],
-            y           = filtered["py"],
-            colorscale  = PUBG_COLORSCALE,
-            showscale   = False,
-            opacity     = 1.0,
-            hoverinfo   = "skip",
-            ncontours   = 30,
-            contours    = dict(
-                coloring  = "fill",
-                showlines = False,
-            ),
-            line        = dict(width=0),
-            nbinsx      = 40,
-            nbinsy      = 40,
+            x=filtered["px"],
+            y=filtered["py"],
+            colorscale=colorscale,
+            contours=dict(coloring="heatmap"),
+            showscale=False,
+            opacity=0.82,
+            hoverinfo="skip",
+            nbinsx=40,
+            nbinsy=40,
         )
     )
     return fig
