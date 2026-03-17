@@ -1,162 +1,263 @@
-
 # LILA Player Journey Visualization Tool
 
-A web-based telemetry visualization tool built for the **LILA Games Associate Product Manager assignment**. The tool allows level designers to visually explore how players navigate maps, where combat occurs, and how gameplay events unfold over time using production telemetry data.
+A web-based telemetry visualization platform built for the LILA Games Associate Product Manager assignment. The project helps level designers and product stakeholders inspect player movement, combat density, loot activity, match flow, and player behavior patterns across multiple maps using production telemetry data.
 
-Live Demo:
-https://lila-apm-assignment-vw6f.vercel.app/
+## Live Demo
 
----
+[https://lila-apm-assignment-vw6f.vercel.app/](https://lila-apm-assignment-vw6f.vercel.app/)
 
-# Features
+## Features
 
 ### Player Journey Visualization
+
 ### Human vs Bot Distinction
+
 ### Event Markers
+
 The tool displays gameplay events including:
+
 - Kills
 - Deaths
 - Loot interactions
 - Storm deaths
 
 ### Timeline Playback
+
 ### Heatmaps
+
 Heatmap overlays highlight:
+
 - High loot areas
 - Combat hotspots
 - Death clusters
 
 ### Filtering
+
 Matches can be filtered by:
+
 - Map
 - Date
 - Match ID
 
----
+## Tech Stack
 
-# Tech Stack
+### Frontend
 
-## Frontend
 - React
 - Vite
-- Plotly.js
 - TypeScript
+- Recharts
 
-## Backend
+### Backend
+
 - FastAPI
 - Python
 - Pandas
 - PyArrow
+- Plotly
 
-## Deployment
+### Deployment
+
 - Frontend: Vercel
 - Backend: Railway
----
 
-# Project Structure
+## Project Structure
 
-lila-apm-assignment
-│
-├── backend
+```text
+lila-apm-assignment/
+├── backend/
+│   ├── config.py
+│   ├── data_loader.py
+│   ├── data_processor.py
 │   ├── main.py
-│   ├── data_processing
-│   └── requirements.txt
-│
-├── src
-│   ├── components
-│   ├── pages
-│   └── visualizations
-│
-├── public
-│   └── minimaps
-│
-├── ARCHITECTURE.md
-├── INSIGHTS.md
-└── README.md
----
+│   ├── models.py
+│   ├── requirements.txt
+│   ├── store.py
+│   ├── utils.py
+│   └── visualizations.py
+├── context/
+│   ├── Lila APM Written Test.pdf
+│   └── README.md
+├── guidelines/
+│   └── Guidelines.md
+├── src/
+│   ├── app/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── lib/
+│   │   ├── pages/
+│   │   ├── App.tsx
+│   │   └── routes.tsx
+│   ├── styles/
+│   └── main.tsx
+├── .env.example
+├── .gitignore
+├── index.html
+├── package.json
+├── README.md
+├── vercel.json
+└── vite.config.ts
+```
 
-# Running the Project Locally
+## Running the Project Locally
 
-## 1. Clone the Repository
+### 1. Clone the Repository
 
+```bash
 git clone https://github.com/Adarsh1313/lila-apm-assignment.git
 cd lila-apm-assignment
+```
 
----
+### 2. Install Frontend Dependencies
 
-# Backend Setup
+```bash
+npm install
+```
+
+### 3. Create the Backend Virtual Environment
+
+```bash
+python -m venv backend/.venv
+```
+
+### 4. Install Backend Dependencies
+
+Windows:
+
+```bash
+backend\.venv\Scripts\pip install -r backend/requirements.txt
+```
+
+macOS/Linux:
+
+```bash
+backend/.venv/bin/pip install -r backend/requirements.txt
+```
+
+## Backend Setup
 
 Create Python virtual environment:
 
+```bash
 python -m venv backend/.venv
+```
 
 Activate:
 
-Mac/Linux
-source backend/.venv/bin/activate
+macOS/Linux:
 
-Windows
+```bash
+source backend/.venv/bin/activate
+```
+
+Windows:
+
+```bash
 backend\.venv\Scripts\activate
+```
 
 Install dependencies:
 
+```bash
 pip install -r backend/requirements.txt
+```
 
 Run backend server:
 
-uvicorn backend.main:app --host 127.0.0.1 --port 8010
+```bash
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8010
+```
 
 Backend runs at:
-http://127.0.0.1:8010
 
----
+[http://127.0.0.1:8010](http://127.0.0.1:8010)
 
-# Frontend Setup
+## Frontend Setup
 
 Install dependencies:
 
+```bash
 npm install
+```
 
 Run development server:
 
-npm run dev
+```bash
+npm run dev -- --host 127.0.0.1 --port 5174
+```
 
 Frontend runs at:
-http://127.0.0.1:5174
----
 
-# Environment Variables
+[http://127.0.0.1:5174](http://127.0.0.1:5174)
+
+## Environment Variables
+
 Example `.env` file:
+
+```bash
 VITE_API_BASE_URL=http://127.0.0.1:8010
+```
 
----
+For backend deployment, the following variables are also relevant:
 
-# Data Setup
+```bash
+DATA_PATH=/path/to/player_data
+CORS_ORIGINS=https://your-frontend-domain.vercel.app
+```
+
+## Data Setup
 
 Telemetry data should be placed in:
+
+```text
 backend/player_data
+```
 
 Expected structure:
-player_data
- ├── February_10
- ├── February_11
- ├── February_12
- ├── February_13
- ├── February_14
- └── minimaps
 
-Each folder contains match telemetry files in **parquet format**.
+```text
+player_data/
+├── February_10/
+├── February_11/
+├── February_12/
+├── February_13/
+├── February_14/
+└── minimaps/
+```
 
----
+Each day folder contains match telemetry files in parquet format using the `.nakama-0` suffix. The `minimaps/` folder must contain the three map images required by the backend and frontend.
 
-# Future Improvements
+## Deployment Notes
+
+### Railway
+
+Recommended backend deploy settings:
+
+- Install command: `pip install -r backend/requirements.txt`
+- Start command: `python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+
+### Vercel
+
+Recommended frontend deploy settings:
+
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Output directory: `dist`
+
+Set:
+
+```bash
+VITE_API_BASE_URL=https://your-backend-url.up.railway.app
+```
+
+## Future Improvements
+
 - Player route clustering
 - Loot interaction heatmaps
 - Squad behavior analysis
 - Real-time telemetry ingestion
 - Match comparison dashboards
 
----
+## Author
 
-# Author
 Adarsh Bharathwaj
