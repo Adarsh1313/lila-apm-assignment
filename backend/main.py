@@ -31,7 +31,14 @@ STORE: DataStore | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global STORE
-    STORE = build_store(get_data_path())
+    try:
+        STORE = build_store(get_data_path())
+    except Exception as exc:
+        # Data not available yet (e.g. first deploy before player_data is uploaded).
+        # Server starts in degraded mode — upload data via Railway shell and restart.
+        import logging
+        logging.getLogger(__name__).warning("Data store not loaded: %s", exc)
+        STORE = None
     yield
 
 
@@ -134,11 +141,12 @@ def derive_kill_kind(event_name: str, player_type: str) -> str:
 
 @app.get("/healthz")
 def healthcheck():
-    store = require_store()
+    if STORE is None:
+        return {"status": "degraded", "detail": "player_data not loaded — upload data and restart"}
     return {
         "status": "ok",
-        "rows": int(len(store.df_clean)),
-        "matches": int(store.df_clean["match_id"].nunique()),
+        "rows": int(len(STORE.df_clean)),
+        "matches": int(STORE.df_clean["match_id"].nunique()),
     }
 
 
