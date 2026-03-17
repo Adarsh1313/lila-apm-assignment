@@ -3,7 +3,6 @@ dist/
 
 .venv/
 backend/.venv/
-backend/player_data/
 
 __pycache__/
 backend/__pycache__/

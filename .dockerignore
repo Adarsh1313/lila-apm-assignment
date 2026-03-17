@@ -15,6 +15,7 @@ context/
 guidelines/
 
 # Keep /backend but exclude logs and pycache
+# NOTE: backend/player_data/ is intentionally NOT excluded — data is baked into the image
 backend/server*.log
 backend/server*.err
 __pycache__/
