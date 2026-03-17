@@ -52,7 +52,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/minimaps", StaticFiles(directory=str(get_data_path() / "minimaps")), name="minimaps")
+_minimaps_dir = get_data_path() / "minimaps"
+if _minimaps_dir.exists():
+    app.mount("/minimaps", StaticFiles(directory=str(_minimaps_dir)), name="minimaps")
+
 
 
 def require_store() -> DataStore:
