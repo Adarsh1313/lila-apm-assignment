@@ -1,65 +1,162 @@
-# LILA BLACK APM Assignment
 
-Frontend and backend for the LILA BLACK telemetry and player journey visualization tool.
+# LILA Player Journey Visualization Tool
 
-## Project Structure
+A web-based telemetry visualization tool built for the **LILA Games Associate Product Manager assignment**. The tool allows level designers to visually explore how players navigate maps, where combat occurs, and how gameplay events unfold over time using production telemetry data.
 
-- `src/`
-  - React + Vite frontend
-- `backend/`
-  - FastAPI backend
-- `context/`
-  - Project context and reference material
-- `guidelines/`
-  - Project guidelines
+Live Demo:
+https://lila-apm-assignment-vw6f.vercel.app/
+
+---
+
+# Features
+
+### Player Journey Visualization
+### Human vs Bot Distinction
+### Event Markers
+The tool displays gameplay events including:
+- Kills
+- Deaths
+- Loot interactions
+- Storm deaths
+
+### Timeline Playback
+### Heatmaps
+Heatmap overlays highlight:
+- High loot areas
+- Combat hotspots
+- Death clusters
+
+### Filtering
+Matches can be filtered by:
+- Map
+- Date
+- Match ID
+
+---
+
+# Tech Stack
 
 ## Frontend
+- React
+- Vite
+- Plotly.js
+- TypeScript
+
+## Backend
+- FastAPI
+- Python
+- Pandas
+- PyArrow
+
+## Deployment
+- Frontend: Vercel
+- Backend: Railway
+---
+
+# Project Structure
+
+lila-apm-assignment
+│
+├── backend
+│   ├── main.py
+│   ├── data_processing
+│   └── requirements.txt
+│
+├── src
+│   ├── components
+│   ├── pages
+│   └── visualizations
+│
+├── public
+│   └── minimaps
+│
+├── ARCHITECTURE.md
+├── INSIGHTS.md
+└── README.md
+---
+
+# Running the Project Locally
+
+## 1. Clone the Repository
+
+git clone https://github.com/Adarsh1313/lila-apm-assignment.git
+cd lila-apm-assignment
+
+---
+
+# Backend Setup
+
+Create Python virtual environment:
+
+python -m venv backend/.venv
+
+Activate:
+
+Mac/Linux
+source backend/.venv/bin/activate
+
+Windows
+backend\.venv\Scripts\activate
 
 Install dependencies:
 
-```bash
+pip install -r backend/requirements.txt
+
+Run backend server:
+
+uvicorn backend.main:app --host 127.0.0.1 --port 8010
+
+Backend runs at:
+http://127.0.0.1:8010
+
+---
+
+# Frontend Setup
+
+Install dependencies:
+
 npm install
-```
 
-Run the dev server:
+Run development server:
 
-```bash
-npm run dev -- --host 127.0.0.1 --port 5174
-```
+npm run dev
 
-The frontend expects the backend at `http://127.0.0.1:8010` by default. Override with `VITE_API_BASE_URL` if needed.
+Frontend runs at:
+http://127.0.0.1:5174
+---
 
-## Backend
+# Environment Variables
+Example `.env` file:
+VITE_API_BASE_URL=http://127.0.0.1:8010
 
-Create a virtual environment and install dependencies:
+---
 
-```bash
-python -m venv backend/.venv
-backend/.venv/Scripts/pip install -r backend/requirements.txt
-```
+# Data Setup
 
-Run the API:
+Telemetry data should be placed in:
+backend/player_data
 
-```bash
-backend/.venv/Scripts/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8010
-```
+Expected structure:
+player_data
+ ├── February_10
+ ├── February_11
+ ├── February_12
+ ├── February_13
+ ├── February_14
+ └── minimaps
 
-## Backend Data
+Each folder contains match telemetry files in **parquet format**.
 
-The backend reads telemetry data from `DATA_PATH`.
+---
 
-- Default: `backend/player_data`
-- Required contents:
-  - day folders such as `February_10` through `February_14`
-  - `minimaps/` with the three map images
+# Future Improvements
+- Player route clustering
+- Loot interaction heatmaps
+- Squad behavior analysis
+- Real-time telemetry ingestion
+- Match comparison dashboards
 
-Example:
+---
 
-```bash
-set DATA_PATH=D:\path\to\player_data
-```
-
-## Notes
-
-- Build output, virtual environments, logs, and local datasets are intentionally gitignored.
-- Plotly figures are served as JSON from FastAPI for frontend rendering.
+# Author
+Adarsh Bharathwaj
