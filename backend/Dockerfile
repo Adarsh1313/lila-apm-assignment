@@ -30,4 +30,4 @@ ENV CORS_ORIGINS=http://localhost:5173
 
 EXPOSE $PORT
 
-CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8010}"]
