@@ -23,7 +23,7 @@ COPY backend/ ./backend/
 ENV DATA_PATH=/app/backend/player_data
 
 # CORS_ORIGINS — set this in Railway → Variables to your Vercel URL
-ENV CORS_ORIGINS=http://localhost:5173
+ENV CORS_ORIGINS=https://lila-apm-assignment-vw6f.vercel.app
 
 EXPOSE 8010
 
