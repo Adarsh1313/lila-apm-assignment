@@ -4,7 +4,7 @@ A web-based telemetry visualization platform built for the LILA Games Associate 
 
 ## Live Demo
 
-[https://lila-apm-assignment-vw6f.vercel.app/](https://lila-apm-assignment-vw6f.vercel.app/)
+[https://lila-apm-assignment.vercel.app/](https://lila-apm-assignment.vercel.app/)
 
 ## Features
 
