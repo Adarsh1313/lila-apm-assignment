@@ -1,5 +1,5 @@
 import { Skull } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { MapViewport } from "../components/MapViewport";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../components/ui/resizable";
@@ -30,13 +30,10 @@ type HoveredPoint = {
   y: number;
 };
 
-type AggregatedHotspot = {
-  key: string;
+type RenderHeatPoint = {
   x: number;
   y: number;
-  intensity: number;
-  count: number;
-  size: number;
+  weight: number;
 };
 
 const killTypeLabels: Record<KillType, string> = {
@@ -247,16 +244,29 @@ export function MapAnalysisPage() {
     [deathFilter, deathPoints],
   );
 
-  const lootHotspots = useMemo(() => aggregateHotspots(lootPoints, "loot", 28, 60, 126), [lootPoints]);
-  const killHotspots = useMemo(() => aggregateHotspots(visibleKillPoints, "kill", 30, 66, 136), [visibleKillPoints]);
-  const humanPositionHotspots = useMemo(
-    () => aggregateHotspots(visiblePositionPoints.filter((point) => point.event_name === "Position"), "position-human", 34, 56, 128),
-    [visiblePositionPoints],
-  );
-  const botPositionHotspots = useMemo(
-    () => aggregateHotspots(visiblePositionPoints.filter((point) => point.event_name === "BotPosition"), "position-bot", 34, 56, 128),
-    [visiblePositionPoints],
-  );
+  const combinedHeatmapPoints = useMemo(() => {
+    const next: RenderHeatPoint[] = [];
+
+    if (activeHeatmaps.includes("loot")) {
+      lootPoints.forEach((point) => {
+        next.push({ x: point.x, y: point.y, weight: point.intensity ?? 0.86 });
+      });
+    }
+
+    if (activeHeatmaps.includes("kills")) {
+      visibleKillPoints.forEach((point) => {
+        next.push({ x: point.x, y: point.y, weight: point.intensity ?? 1.0 });
+      });
+    }
+
+    if (activeHeatmaps.includes("position")) {
+      visiblePositionPoints.forEach((point) => {
+        next.push({ x: point.x, y: point.y, weight: point.intensity ?? 0.3 });
+      });
+    }
+
+    return next;
+  }, [activeHeatmaps, lootPoints, visibleKillPoints, visiblePositionPoints]);
 
   const measurement =
     measurePoints.length === 2
@@ -465,6 +475,9 @@ export function MapAnalysisPage() {
                 className="w-full accent-[var(--purple)]"
               />
             </div>
+            <div className="mb-3 rounded-md border border-[var(--border-subtle)] bg-black/20 px-3 py-2 text-[11px] text-white/62">
+              Selected heatmap events are merged into one shared density layer so overlap stays readable for level-design review.
+            </div>
             <ToolButton
               onClick={() => {
                 setActiveHeatmaps([]);
@@ -545,42 +558,7 @@ export function MapAnalysisPage() {
 
                   {showGrid ? <GridOverlay /> : null}
 
-                  {activeHeatmaps.includes("position")
-                    ? humanPositionHotspots.map((spot) => (
-                        <HeatSpot
-                          key={spot.key}
-                          spot={spot}
-                          color={`rgba(76, 240, 255, ${(0.18 + spot.intensity * 0.24) * (heatmapOpacity / 100)})`}
-                        />
-                      ))
-                    : null}
-                  {activeHeatmaps.includes("position")
-                    ? botPositionHotspots.map((spot) => (
-                        <HeatSpot
-                          key={spot.key}
-                          spot={spot}
-                          color={`rgba(255, 99, 216, ${(0.16 + spot.intensity * 0.24) * (heatmapOpacity / 100)})`}
-                        />
-                      ))
-                    : null}
-                  {activeHeatmaps.includes("loot")
-                    ? lootHotspots.map((spot) => (
-                        <HeatSpot
-                          key={spot.key}
-                          spot={spot}
-                          color={`rgba(210, 153, 34, ${(0.24 + spot.intensity * 0.24) * (heatmapOpacity / 100)})`}
-                        />
-                      ))
-                    : null}
-                  {activeHeatmaps.includes("kills")
-                    ? killHotspots.map((spot) => (
-                        <HeatSpot
-                          key={spot.key}
-                          spot={spot}
-                          color={`rgba(248, 81, 73, ${(0.28 + spot.intensity * 0.26) * (heatmapOpacity / 100)})`}
-                        />
-                      ))
-                    : null}
+                  <UnifiedHeatmapCanvas points={combinedHeatmapPoints} opacity={heatmapOpacity / 100} />
 
                   {showStormDeaths
                     ? stormPoints.map((point) => (
@@ -716,80 +694,110 @@ export function MapAnalysisPage() {
   );
 }
 
-function aggregateHotspots(
-  points: HeatmapPoint[],
-  prefix: string,
-  gridSize: number,
-  minSize: number,
-  maxSize: number,
-): AggregatedHotspot[] {
-  if (points.length === 0) {
-    return [];
-  }
+function UnifiedHeatmapCanvas({
+  points,
+  opacity,
+}: {
+  points: RenderHeatPoint[];
+  opacity: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const bucketSize = 1024 / gridSize;
-  const buckets = new Map<string, { xTotal: number; yTotal: number; count: number }>();
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
 
-  points.forEach((point) => {
-    const column = Math.min(gridSize - 1, Math.max(0, Math.floor(point.x / bucketSize)));
-    const row = Math.min(gridSize - 1, Math.max(0, Math.floor(point.y / bucketSize)));
-    const key = `${prefix}-${column}-${row}`;
-    const current = buckets.get(key) ?? { xTotal: 0, yTotal: 0, count: 0 };
-    current.xTotal += point.x;
-    current.yTotal += point.y;
-    current.count += 1;
-    buckets.set(key, current);
-  });
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return;
+    }
 
-  const maxCount = Math.max(...Array.from(buckets.values(), (bucket) => bucket.count));
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  return Array.from(buckets.entries()).map(([key, bucket]) => {
-    const intensity = bucket.count / maxCount;
-    return {
-      key,
-      x: bucket.xTotal / bucket.count,
-      y: bucket.yTotal / bucket.count,
-      intensity,
-      count: bucket.count,
-      size: minSize + intensity * (maxSize - minSize),
-    };
-  });
+    if (points.length === 0) {
+      return;
+    }
+
+    const offscreen = document.createElement("canvas");
+    offscreen.width = 320;
+    offscreen.height = 320;
+    const offCtx = offscreen.getContext("2d");
+    if (!offCtx) {
+      return;
+    }
+
+    offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+    offCtx.globalCompositeOperation = "lighter";
+
+    const densityRadius = points.length > 6000 ? 15 : points.length > 2500 ? 18 : 22;
+
+    points.forEach((point) => {
+      const x = (point.x / 1024) * offscreen.width;
+      const y = (point.y / 1024) * offscreen.height;
+      const gradient = offCtx.createRadialGradient(x, y, 0, x, y, densityRadius);
+      const alpha = Math.min(1, point.weight);
+      gradient.addColorStop(0, `rgba(255,255,255,${alpha})`);
+      gradient.addColorStop(0.45, `rgba(255,255,255,${alpha * 0.55})`);
+      gradient.addColorStop(1, "rgba(255,255,255,0)");
+      offCtx.fillStyle = gradient;
+      offCtx.fillRect(x - densityRadius, y - densityRadius, densityRadius * 2, densityRadius * 2);
+    });
+
+    const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
+    const data = imageData.data;
+
+    for (let index = 0; index < data.length; index += 4) {
+      const intensity = Math.min(1, Math.pow(data[index + 3] / 255, 0.88));
+      const color = getHeatColor(intensity);
+      data[index] = color.r;
+      data[index + 1] = color.g;
+      data[index + 2] = color.b;
+      data[index + 3] = Math.round(color.a * opacity * 255);
+    }
+
+    offCtx.putImageData(imageData, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
+  }, [opacity, points]);
+
+  return <canvas ref={canvasRef} width={1024} height={1024} className="pointer-events-none absolute inset-0 z-[12] h-full w-full mix-blend-screen" />;
 }
 
-function HeatSpot({
-  spot,
-  color,
-}: {
-  spot: AggregatedHotspot;
-  color: string;
-}) {
-  return (
-    <>
-      <div
-        className="absolute rounded-full blur-2xl"
-        style={{
-          left: `${(spot.x / 1024) * 100}%`,
-          top: `${(spot.y / 1024) * 100}%`,
-          width: spot.size,
-          height: spot.size,
-          transform: "translate(-50%, -50%)",
-          background: color,
-        }}
-      />
-      <div
-        className="absolute rounded-full blur-md mix-blend-screen"
-        style={{
-          left: `${(spot.x / 1024) * 100}%`,
-          top: `${(spot.y / 1024) * 100}%`,
-          width: spot.size * 0.44,
-          height: spot.size * 0.44,
-          transform: "translate(-50%, -50%)",
-          background: color,
-          opacity: 0.95,
-        }}
-      />
-    </>
-  );
+function getHeatColor(intensity: number) {
+  if (intensity <= 0.02) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  const stops = [
+    { stop: 0.05, color: [41, 184, 255, 0.22] },
+    { stop: 0.25, color: [79, 224, 142, 0.38] },
+    { stop: 0.5, color: [219, 242, 75, 0.56] },
+    { stop: 0.72, color: [255, 184, 49, 0.72] },
+    { stop: 1, color: [255, 77, 53, 0.86] },
+  ] as const;
+
+  let start = stops[0];
+  let end = stops[stops.length - 1];
+
+  for (let index = 1; index < stops.length; index += 1) {
+    if (intensity <= stops[index].stop) {
+      start = stops[index - 1];
+      end = stops[index];
+      break;
+    }
+  }
+
+  const range = Math.max(0.0001, end.stop - start.stop);
+  const t = Math.max(0, Math.min(1, (intensity - start.stop) / range));
+  return {
+    r: Math.round(start.color[0] + (end.color[0] - start.color[0]) * t),
+    g: Math.round(start.color[1] + (end.color[1] - start.color[1]) * t),
+    b: Math.round(start.color[2] + (end.color[2] - start.color[2]) * t),
+    a: start.color[3] + (end.color[3] - start.color[3]) * t,
+  };
 }
 
 function formatDuration(totalSeconds: number) {

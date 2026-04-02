@@ -8,14 +8,15 @@ A telemetry visualization platform built for the LILA Games Associate Product Ma
 
 ## What The Current Preview Includes
 
-- Layered map heatmaps for `Loot`, `Kills`, and `Position`
-- Position heatmap split into `Human Position` and `Bot Position`
-- Overlay comparison so designers can combine multiple heatmaps at once
+- A unified density heatmap that merges the currently selected event families into one readable surface
+- Heatmap source toggles for `Loot`, `Kills`, and `Position`
+- Position filtering for `Human Position` and `Bot Position`
+- Server-side position downsampling so movement heatmaps stay performant and comparable to loot and kill data
 - Skull-based death markers for normal deaths and storm deaths
 - Hover tooltips anchored above death markers for clearer zoomed inspection
 - Resizable map filter rail for long labels and controls
-- Telemetry pie charts with high-contrast tooltips and simplified percentage callouts
-- Full-width `Event Distribution` chart for denser event mixes
+- Telemetry pie charts with high-contrast tooltips
+- A full-width `Event Distribution` chart with a dedicated right-side legend and percentages
 - Match replay and player profile views for deeper behavior review
 
 ## Core Use Cases
@@ -23,7 +24,7 @@ A telemetry visualization platform built for the LILA Games Associate Product Ma
 - Compare traversal pressure against loot placement
 - Inspect combat hotspots against movement density
 - Separate bot behavior from human behavior
-- Spot neglected areas of the map by layering heatmaps together
+- Spot neglected areas of the map by combining multiple event families into one density read
 - Review event distributions and match flow at a telemetry-dashboard level
 
 ## Tech Stack
@@ -111,6 +112,8 @@ CORS_ORIGINS=http://127.0.0.1:5174,https://lila-apm-assignment-vw6f-git-mixed-ad
 ```
 
 If you want the same Railway backend to serve both production and preview frontends, keep every allowed Vercel origin in `CORS_ORIGINS` as a comma-separated list.
+
+If you deploy backend updates for the mixed preview, redeploy Railway as well so any heatmap sampling changes are reflected in the frontend preview.
 
 ## Project Structure
 

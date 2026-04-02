@@ -321,7 +321,23 @@ def get_heatmap_points(
     elif type == "deaths":
         filtered = filtered[filtered["event"].isin(["Killed", "BotKilled"])]
     elif type == "position":
-        filtered = filtered[filtered["event"].isin(["Position", "BotPosition"])]
+        filtered = filtered[filtered["event"].isin(["Position", "BotPosition"])].copy()
+        if filtered.empty:
+            return []
+
+        filtered["time_bucket"] = (filtered["ts_relative"] / 4).astype(int)
+        filtered["cell_x"] = (filtered["px"] / 18).astype(int)
+        filtered["cell_y"] = (filtered["py"] / 18).astype(int)
+        dedupe_columns = [
+            column
+            for column in ["match_id", "user_id", "event", "time_bucket", "cell_x", "cell_y"]
+            if column in filtered.columns
+        ]
+        filtered = filtered.sort_values("ts_relative").drop_duplicates(subset=dedupe_columns)
+
+        if len(filtered) > 18000:
+            step = max(1, len(filtered) // 18000)
+            filtered = filtered.iloc[::step].copy()
     else:
         raise HTTPException(status_code=400, detail="Unsupported heatmap type")
 
@@ -330,7 +346,17 @@ def get_heatmap_points(
             "id": f"{type}-{index}",
             "x": float(row["px"]),
             "y": float(row["py"]),
-            "intensity": 0.65,
+            "intensity": (
+                0.86
+                if type == "loot"
+                else 1.0
+                if type == "kills"
+                else 0.34
+                if str(row["event"]) == "Position"
+                else 0.28
+                if str(row["event"]) == "BotPosition"
+                else 0.7
+            ),
             "player_type": "Human" if row["player_type"] == "human" else "Bot",
             "match_id": str(row["match_id"]),
             "survived_time": normalize_elapsed_seconds(float(row["ts_relative"])),

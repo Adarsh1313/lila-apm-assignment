@@ -220,7 +220,7 @@ export function TelemetryPage() {
               </ChartCard>
 
               <ChartCard title="Event Distribution" className="lg:col-span-2">
-                <DistributionPieChart data={overview.eventDistribution} minLabelPercent={0.08} />
+                <EventDistributionChart data={overview.eventDistribution} />
               </ChartCard>
             </div>
           </div>
@@ -304,6 +304,44 @@ function DistributionPieChart({
         <Legend />
       </PieChart>
     </ResponsiveContainer>
+  );
+}
+
+function EventDistributionChart({ data }: { data: { name: string; value: number }[] }) {
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+  const entries = data.map((entry, index) => ({
+    ...entry,
+    color: PIE_COLORS[index % PIE_COLORS.length],
+    percent: total > 0 ? (entry.value / total) * 100 : 0,
+  }));
+
+  return (
+    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr),240px] gap-4">
+      <div className="min-h-0 min-w-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+            <Pie data={entries} dataKey="value" nameKey="name" innerRadius={62} outerRadius={98} paddingAngle={2}>
+              {entries.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip content={<PieTooltipContent total={total} />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="panel-scroll min-h-0 overflow-y-auto rounded-md border border-[var(--border-subtle)] bg-black/18 p-3">
+        <div className="mb-3 font-display text-[10px] uppercase tracking-[0.24em] text-white/46">Legend</div>
+        <div className="space-y-2">
+          {entries.map((entry) => (
+            <div key={entry.name} className="grid grid-cols-[12px,minmax(0,1fr),auto] items-start gap-2 text-[11px] text-white/74">
+              <span className="mt-1 h-3 w-3 rounded-sm" style={{ background: entry.color }} />
+              <span className="min-w-0 break-words">{entry.name}</span>
+              <span className="whitespace-nowrap font-mono text-white/92">{entry.percent.toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
