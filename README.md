@@ -1,19 +1,188 @@
-# LILA BLACK APM Assignment
+# LILA Player Journey Visualization Tool
 
-Frontend and backend for the LILA BLACK telemetry and player journey visualization tool.
+A web-based telemetry visualization platform built for the LILA Games Associate Product Manager assignment. The project helps level designers and product stakeholders inspect player movement, combat density, loot activity, match flow, and player behavior patterns across multiple maps using production telemetry data.
+
+## Live Demo
+
+[https://lila-apm-assignment-vw6f.vercel.app/](https://lila-apm-assignment-vw6f.vercel.app/)
+
+## Mixed Branch Preview
+
+[https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app/](https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app/)
+
+## Features
+
+### Player Journey Visualization
+
+Visualize player routes across matches and inspect how individual players move through each map over time.
+
+### Human vs Bot Distinction
+
+Separate humans and bots throughout the experience so behavior can be compared accurately across heatmaps, player profiles, telemetry views, and replay flows.
+
+### Event Markers
+
+The tool displays gameplay events including:
+
+- Kills
+- Deaths
+- Loot interactions
+- Storm deaths
+
+### Timeline Playback
+
+Replay sampled match timelines with event feeds, player movement, and timeline controls to understand the flow of encounters from multiple player perspectives.
+
+### Heatmaps
+
+Heatmap overlays highlight:
+
+- High loot areas
+- Combat hotspots
+- Death clusters
+
+### Filtering
+
+Matches can be filtered by:
+
+- Map
+- Date
+- Match ID
+
+## Tech Stack
+
+### Frontend
+
+- React
+- Vite
+- TypeScript
+- Recharts
+
+### Backend
+
+- FastAPI
+- Python
+- Pandas
+- PyArrow
+- Plotly
+
+### Deployment
+
+- Frontend: Vercel
+- Backend: Railway
 
 ## Project Structure
 
-- `src/`
-  - React + Vite frontend
-- `backend/`
-  - FastAPI backend
-- `context/`
-  - Project context and reference material
-- `guidelines/`
-  - Project guidelines
+```text
+lila-apm-assignment/
+├── backend/
+│   ├── config.py
+│   ├── data_loader.py
+│   ├── data_processor.py
+│   ├── main.py
+│   ├── models.py
+│   ├── requirements.txt
+│   ├── store.py
+│   ├── utils.py
+│   └── visualizations.py
+├── context/
+│   ├── Lila APM Written Test.pdf
+│   └── README.md
+├── guidelines/
+│   └── Guidelines.md
+├── src/
+│   ├── app/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── lib/
+│   │   ├── pages/
+│   │   ├── App.tsx
+│   │   └── routes.tsx
+│   ├── styles/
+│   └── main.tsx
+├── .env.example
+├── .gitignore
+├── index.html
+├── package.json
+├── README.md
+├── vercel.json
+└── vite.config.ts
+```
 
-## Frontend
+## Running the Project Locally
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Adarsh1313/lila-apm-assignment.git
+cd lila-apm-assignment
+```
+
+### 2. Install Frontend Dependencies
+
+```bash
+npm install
+```
+
+### 3. Create the Backend Virtual Environment
+
+```bash
+python -m venv backend/.venv
+```
+
+### 4. Install Backend Dependencies
+
+Windows:
+
+```bash
+backend\.venv\Scripts\pip install -r backend/requirements.txt
+```
+
+macOS/Linux:
+
+```bash
+backend/.venv/bin/pip install -r backend/requirements.txt
+```
+
+## Backend Setup
+
+Create Python virtual environment:
+
+```bash
+python -m venv backend/.venv
+```
+
+Activate:
+
+macOS/Linux:
+
+```bash
+source backend/.venv/bin/activate
+```
+
+Windows:
+
+```bash
+backend\.venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+Run backend server:
+
+```bash
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8010
+```
+
+Backend runs at:
+
+[http://127.0.0.1:8010](http://127.0.0.1:8010)
+
+## Frontend Setup
 
 Install dependencies:
 
@@ -21,45 +190,84 @@ Install dependencies:
 npm install
 ```
 
-Run the dev server:
+Run development server:
 
 ```bash
 npm run dev -- --host 127.0.0.1 --port 5174
 ```
 
-The frontend expects the backend at `http://127.0.0.1:8010` by default. Override with `VITE_API_BASE_URL` if needed.
+Frontend runs at:
 
-## Backend
+[http://127.0.0.1:5174](http://127.0.0.1:5174)
 
-Create a virtual environment and install dependencies:
+## Environment Variables
 
-```bash
-python -m venv backend/.venv
-backend/.venv/Scripts/pip install -r backend/requirements.txt
-```
-
-Run the API:
+Example `.env` file:
 
 ```bash
-backend/.venv/Scripts/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8010
+VITE_API_BASE_URL=http://127.0.0.1:8010
 ```
 
-## Backend Data
-
-The backend reads telemetry data from `DATA_PATH`.
-
-- Default: `backend/player_data`
-- Required contents:
-  - day folders such as `February_10` through `February_14`
-  - `minimaps/` with the three map images
-
-Example:
+For backend deployment, the following variables are also relevant:
 
 ```bash
-set DATA_PATH=D:\path\to\player_data
+DATA_PATH=/path/to/player_data
+CORS_ORIGINS=https://your-frontend-domain.vercel.app
 ```
 
-## Notes
+## Data Setup
 
-- Build output, virtual environments, logs, and local datasets are intentionally gitignored.
-- Plotly figures are served as JSON from FastAPI for frontend rendering.
+Telemetry data should be placed in:
+
+```text
+backend/player_data
+```
+
+Expected structure:
+
+```text
+player_data/
+├── February_10/
+├── February_11/
+├── February_12/
+├── February_13/
+├── February_14/
+└── minimaps/
+```
+
+Each day folder contains match telemetry files in parquet format using the `.nakama-0` suffix. The `minimaps/` folder must contain the three map images required by the backend and frontend.
+
+## Deployment Notes
+
+### Railway
+
+Recommended backend deploy settings:
+
+- Install command: `pip install -r backend/requirements.txt`
+- Start command: `python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+
+### Vercel
+
+Recommended frontend deploy settings:
+
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Output directory: `dist`
+
+Set:
+
+```bash
+VITE_API_BASE_URL=https://your-backend-url.up.railway.app
+```
+
+## Future Improvements
+
+- Player route clustering
+- Loot interaction heatmaps
+- Squad behavior analysis
+- Real-time telemetry ingestion
+- Match comparison dashboards
+
+## Author
+
+Adarsh Bharathwaj

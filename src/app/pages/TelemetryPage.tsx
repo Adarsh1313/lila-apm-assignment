@@ -219,7 +219,7 @@ export function TelemetryPage() {
                 <DistributionPieChart data={overview.playerDistribution} />
               </ChartCard>
 
-              <ChartCard title="Event Distribution">
+              <ChartCard title="Event Distribution" className="lg:col-span-2">
                 <DistributionPieChart data={overview.eventDistribution} />
               </ChartCard>
             </div>
@@ -365,9 +365,9 @@ function TelemetryChartPanel({
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: ReactNode }) {
+function ChartCard({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <div className="grid h-[320px] grid-rows-[auto,1fr] rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+    <div className={`grid h-[320px] grid-rows-[auto,1fr] rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 ${className}`}>
       <div className="mb-3 font-display text-[12px] uppercase tracking-[0.28em] text-[var(--loot-yellow)]">{title}</div>
       <div className="h-full min-h-0">{children}</div>
     </div>

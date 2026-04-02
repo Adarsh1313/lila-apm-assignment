@@ -212,8 +212,8 @@ export function MapAnalysisPage() {
     [deathFilter, deathPoints],
   );
 
-  const lootHotspots = useMemo(() => aggregateHotspots(lootPoints, "loot", 28, 48, 108), [lootPoints]);
-  const killHotspots = useMemo(() => aggregateHotspots(visibleKillPoints, "kill", 30, 54, 118), [visibleKillPoints]);
+  const lootHotspots = useMemo(() => aggregateHotspots(lootPoints, "loot", 28, 60, 126), [lootPoints]);
+  const killHotspots = useMemo(() => aggregateHotspots(visibleKillPoints, "kill", 30, 66, 136), [visibleKillPoints]);
 
   const measurement =
     measurePoints.length === 2
@@ -472,7 +472,7 @@ export function MapAnalysisPage() {
                           <HeatSpot
                             key={spot.key}
                             spot={spot}
-                            color={`rgba(248, 81, 73, ${(0.14 + spot.intensity * 0.24) * (heatmapOpacity / 100)})`}
+                            color={`rgba(248, 81, 73, ${(0.24 + spot.intensity * 0.28) * (heatmapOpacity / 100)})`}
                           />
                         ))
                       : activeLayer === "loot"
@@ -480,7 +480,7 @@ export function MapAnalysisPage() {
                             <HeatSpot
                               key={spot.key}
                               spot={spot}
-                              color={`rgba(210, 153, 34, ${(0.12 + spot.intensity * 0.2) * (heatmapOpacity / 100)})`}
+                              color={`rgba(210, 153, 34, ${(0.2 + spot.intensity * 0.22) * (heatmapOpacity / 100)})`}
                             />
                           ))
                         : null}
@@ -640,17 +640,31 @@ function HeatSpot({
   color: string;
 }) {
   return (
-    <div
-      className="absolute rounded-full blur-2xl"
-      style={{
-        left: `${(spot.x / 1024) * 100}%`,
-        top: `${(spot.y / 1024) * 100}%`,
-        width: spot.size,
-        height: spot.size,
-        transform: "translate(-50%, -50%)",
-        background: color,
-      }}
-    />
+    <>
+      <div
+        className="absolute rounded-full blur-2xl"
+        style={{
+          left: `${(spot.x / 1024) * 100}%`,
+          top: `${(spot.y / 1024) * 100}%`,
+          width: spot.size,
+          height: spot.size,
+          transform: "translate(-50%, -50%)",
+          background: color,
+        }}
+      />
+      <div
+        className="absolute rounded-full blur-md mix-blend-screen"
+        style={{
+          left: `${(spot.x / 1024) * 100}%`,
+          top: `${(spot.y / 1024) * 100}%`,
+          width: spot.size * 0.44,
+          height: spot.size * 0.44,
+          transform: "translate(-50%, -50%)",
+          background: color,
+          opacity: 0.95,
+        }}
+      />
+    </>
   );
 }
 
