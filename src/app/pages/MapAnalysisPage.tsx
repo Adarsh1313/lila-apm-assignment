@@ -65,7 +65,7 @@ export function MapAnalysisPage() {
   const [deathFilter, setDeathFilter] = useState<DeathFilter>("all");
   const [showGrid, setShowGrid] = useState(false);
   const [zoom, setZoom] = useState(1);
-  const [heatmapOpacity, setHeatmapOpacity] = useState(70);
+  const [heatmapOpacity, setHeatmapOpacity] = useState(50);
   const [measureMode, setMeasureMode] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<{ x: number; y: number }[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<HoveredPoint | null>(null);
@@ -500,7 +500,7 @@ export function MapAnalysisPage() {
                 setKillTypes(["hh", "hb", "bh", "bb"]);
                 setDeathFilter("all");
                 setShowGrid(false);
-                setHeatmapOpacity(70);
+                setHeatmapOpacity(50);
                 setMeasureMode(false);
                 setMeasurePoints([]);
               }}
@@ -559,6 +559,7 @@ export function MapAnalysisPage() {
                   {showGrid ? <GridOverlay /> : null}
 
                   <UnifiedHeatmapCanvas points={combinedHeatmapPoints} opacity={heatmapOpacity / 100} />
+                  {combinedHeatmapPoints.length > 0 ? <HeatmapScaleLegend /> : null}
 
                   {showStormDeaths
                     ? stormPoints.map((point) => (
@@ -731,7 +732,7 @@ function UnifiedHeatmapCanvas({
     offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
     offCtx.globalCompositeOperation = "lighter";
 
-    const densityRadius = points.length > 6000 ? 15 : points.length > 2500 ? 18 : 22;
+    const densityRadius = points.length > 9000 ? 6 : points.length > 4500 ? 8 : 10;
 
     points.forEach((point) => {
       const x = (point.x / 1024) * offscreen.width;
@@ -739,7 +740,7 @@ function UnifiedHeatmapCanvas({
       const gradient = offCtx.createRadialGradient(x, y, 0, x, y, densityRadius);
       const alpha = Math.min(1, point.weight);
       gradient.addColorStop(0, `rgba(255,255,255,${alpha})`);
-      gradient.addColorStop(0.45, `rgba(255,255,255,${alpha * 0.55})`);
+      gradient.addColorStop(0.35, `rgba(255,255,255,${alpha * 0.45})`);
       gradient.addColorStop(1, "rgba(255,255,255,0)");
       offCtx.fillStyle = gradient;
       offCtx.fillRect(x - densityRadius, y - densityRadius, densityRadius * 2, densityRadius * 2);
@@ -747,14 +748,33 @@ function UnifiedHeatmapCanvas({
 
     const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
     const data = imageData.data;
+    const intensityValues: number[] = [];
+
+    for (let index = 3; index < data.length; index += 4) {
+      const value = data[index] / 255;
+      if (value > 0) {
+        intensityValues.push(value);
+      }
+    }
+
+    if (intensityValues.length === 0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    intensityValues.sort((a, b) => a - b);
+    const cap = intensityValues[Math.max(0, Math.floor(intensityValues.length * 0.95) - 1)] ?? intensityValues[intensityValues.length - 1] ?? 1;
+    const floor = intensityValues[Math.max(0, Math.floor(intensityValues.length * 0.2) - 1)] ?? 0;
 
     for (let index = 0; index < data.length; index += 4) {
-      const intensity = Math.min(1, Math.pow(data[index + 3] / 255, 0.88));
+      const raw = data[index + 3] / 255;
+      const normalized = cap > floor ? Math.max(0, Math.min(1, (raw - floor) / (cap - floor))) : raw;
+      const intensity = Math.pow(normalized, 0.92);
       const color = getHeatColor(intensity);
       data[index] = color.r;
       data[index + 1] = color.g;
       data[index + 2] = color.b;
-      data[index + 3] = Math.round(color.a * opacity * 255);
+      data[index + 3] = Math.round(color.a * Math.min(0.85, opacity) * 255);
     }
 
     offCtx.putImageData(imageData, 0, 0);
@@ -767,16 +787,18 @@ function UnifiedHeatmapCanvas({
 }
 
 function getHeatColor(intensity: number) {
-  if (intensity <= 0.02) {
+  if (intensity <= 0.2) {
     return { r: 0, g: 0, b: 0, a: 0 };
   }
 
   const stops = [
-    { stop: 0.05, color: [41, 184, 255, 0.22] },
-    { stop: 0.25, color: [79, 224, 142, 0.38] },
-    { stop: 0.5, color: [219, 242, 75, 0.56] },
-    { stop: 0.72, color: [255, 184, 49, 0.72] },
-    { stop: 1, color: [255, 77, 53, 0.86] },
+    { stop: 0.2, color: [0, 0, 0, 0] },
+    { stop: 0.34, color: [18, 41, 92, 0.22] },
+    { stop: 0.48, color: [42, 214, 255, 0.38] },
+    { stop: 0.64, color: [110, 235, 109, 0.52] },
+    { stop: 0.8, color: [255, 227, 87, 0.68] },
+    { stop: 0.92, color: [255, 165, 70, 0.78] },
+    { stop: 1, color: [255, 255, 255, 0.85] },
   ] as const;
 
   let start = stops[0];
@@ -798,6 +820,25 @@ function getHeatColor(intensity: number) {
     b: Math.round(start.color[2] + (end.color[2] - start.color[2]) * t),
     a: start.color[3] + (end.color[3] - start.color[3]) * t,
   };
+}
+
+function HeatmapScaleLegend() {
+  return (
+    <div className="pointer-events-none absolute right-4 top-4 z-20 rounded-md border border-white/10 bg-black/45 px-3 py-2 shadow-lg backdrop-blur-sm">
+      <div className="mb-2 font-display text-[10px] uppercase tracking-[0.18em] text-white/72">Density</div>
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[10px] text-white/52">Low</span>
+        <div
+          className="h-2.5 w-28 rounded-full"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(18,41,92,0.85) 18%, rgba(42,214,255,0.9) 36%, rgba(110,235,109,0.9) 58%, rgba(255,227,87,0.95) 78%, rgba(255,165,70,0.97) 90%, rgba(255,255,255,1) 100%)",
+          }}
+        />
+        <span className="font-mono text-[10px] text-white/82">High</span>
+      </div>
+    </div>
+  );
 }
 
 function formatDuration(totalSeconds: number) {

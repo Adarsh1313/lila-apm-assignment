@@ -276,51 +276,27 @@ export function TelemetryPage() {
 
 function DistributionPieChart({
   data,
-  minLabelPercent = 0,
 }: {
   data: { name: string; value: number }[];
-  minLabelPercent?: number;
 }) {
-  const total = data.reduce((sum, entry) => sum + entry.value, 0);
-
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart margin={{ top: 10, right: 40, bottom: 10, left: 40 }}>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          innerRadius={58}
-          outerRadius={92}
-          paddingAngle={2}
-          labelLine={false}
-          label={(props) => renderPieCallout({ ...props, total, dataLength: data.length, minLabelPercent })}
-        >
-          {data.map((entry, index) => (
-            <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip content={<PieTooltipContent total={total} />} />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
+  const entries = useMemo(
+    () =>
+      data
+        .filter((entry) => Number(entry.value) > 0)
+        .map((entry, index) => ({
+          ...entry,
+          color: PIE_COLORS[index % PIE_COLORS.length],
+        })),
+    [data],
   );
-}
-
-function EventDistributionChart({ data }: { data: { name: string; value: number }[] }) {
-  const total = data.reduce((sum, entry) => sum + entry.value, 0);
-  const entries = data.map((entry, index) => ({
-    ...entry,
-    color: PIE_COLORS[index % PIE_COLORS.length],
-    percent: total > 0 ? (entry.value / total) * 100 : 0,
-  }));
+  const total = entries.reduce((sum, entry) => sum + entry.value, 0);
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr),240px] gap-4">
+    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr),180px] gap-3">
       <div className="min-h-0 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-            <Pie data={entries} dataKey="value" nameKey="name" innerRadius={62} outerRadius={98} paddingAngle={2}>
+          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <Pie data={entries} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={78} outerRadius={126} paddingAngle={2}>
               {entries.map((entry) => (
                 <Cell key={entry.name} fill={entry.color} />
               ))}
@@ -329,17 +305,62 @@ function EventDistributionChart({ data }: { data: { name: string; value: number 
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="panel-scroll min-h-0 overflow-y-auto rounded-md border border-[var(--border-subtle)] bg-black/18 p-3">
-        <div className="mb-3 font-display text-[10px] uppercase tracking-[0.24em] text-white/46">Legend</div>
-        <div className="space-y-2">
-          {entries.map((entry) => (
-            <div key={entry.name} className="grid grid-cols-[12px,minmax(0,1fr),auto] items-start gap-2 text-[11px] text-white/74">
-              <span className="mt-1 h-3 w-3 rounded-sm" style={{ background: entry.color }} />
-              <span className="min-w-0 break-words">{entry.name}</span>
-              <span className="whitespace-nowrap font-mono text-white/92">{entry.percent.toFixed(1)}%</span>
-            </div>
-          ))}
-        </div>
+      <InlineLegend entries={entries.map((entry) => ({ name: entry.name, color: entry.color, percent: total > 0 ? (entry.value / total) * 100 : 0 }))} />
+    </div>
+  );
+}
+
+function EventDistributionChart({ data }: { data: { name: string; value: number }[] }) {
+  const entries = useMemo(
+    () =>
+      data
+        .filter((entry) => Number(entry.value) > 0)
+        .map((entry, index) => ({
+          ...entry,
+          color: PIE_COLORS[index % PIE_COLORS.length],
+        })),
+    [data],
+  );
+  const total = entries.reduce((sum, entry) => sum + entry.value, 0);
+  const legendEntries = entries.map((entry) => ({ name: entry.name, color: entry.color, percent: total > 0 ? (entry.value / total) * 100 : 0 }));
+
+  return (
+    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr),240px] gap-4">
+      <div className="min-h-0 min-w-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <Pie data={entries} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={84} outerRadius={132} paddingAngle={2}>
+              {entries.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip content={<PieTooltipContent total={total} />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <InlineLegend entries={legendEntries} widthClass="w-full" />
+    </div>
+  );
+}
+
+function InlineLegend({
+  entries,
+  widthClass = "",
+}: {
+  entries: { name: string; color: string; percent: number }[];
+  widthClass?: string;
+}) {
+  return (
+    <div className={`panel-scroll min-h-0 overflow-y-auto rounded-md border border-[var(--border-subtle)] bg-black/18 p-3 ${widthClass}`}>
+      <div className="mb-3 font-display text-[10px] uppercase tracking-[0.24em] text-white/46">Legend</div>
+      <div className="space-y-2">
+        {entries.map((entry) => (
+          <div key={entry.name} className="grid grid-cols-[12px,minmax(0,1fr),auto] items-start gap-2 text-[11px] text-white/74">
+            <span className="mt-1 h-3 w-3 rounded-sm" style={{ background: entry.color }} />
+            <span className="min-w-0 break-words">{entry.name}</span>
+            <span className="whitespace-nowrap font-mono text-white/92">{entry.percent.toFixed(1)}%</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -412,7 +433,7 @@ function TelemetryChartPanel({
 function ChartCard({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
   return (
     <div className={`grid h-[320px] grid-rows-[auto,1fr] rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 ${className}`}>
-      <div className="mb-3 font-display text-[12px] uppercase tracking-[0.28em] text-[var(--loot-yellow)]">{title}</div>
+      <div className="mb-3 font-display text-[14px] font-semibold uppercase tracking-[0.08em] text-[#a0aec0]">{title}</div>
       <div className="h-full min-h-0">{children}</div>
     </div>
   );
@@ -450,92 +471,5 @@ function PieTooltipContent({
       <div className="mt-1 font-mono text-[13px] font-semibold text-black">{value.toLocaleString()}</div>
       <div className="mt-1 text-[12px] text-black/75">{percent.toFixed(1)}%</div>
     </div>
-  );
-}
-
-function renderPieCallout({
-  cx,
-  cy,
-  midAngle,
-  outerRadius,
-  percent,
-  name,
-  fill,
-  dataLength,
-  minLabelPercent,
-}: {
-  cx?: number;
-  cy?: number;
-  midAngle?: number;
-  outerRadius?: number;
-  percent?: number;
-  name?: string;
-  fill?: string;
-  total?: number;
-  dataLength?: number;
-  minLabelPercent?: number;
-}) {
-  if (
-    cx === undefined ||
-    cy === undefined ||
-    midAngle === undefined ||
-    outerRadius === undefined ||
-    percent === undefined
-  ) {
-    return null;
-  }
-
-  if (percent < (minLabelPercent ?? 0)) {
-    return null;
-  }
-
-  const radian = Math.PI / 180;
-  const angle = -midAngle * radian;
-  const startX = cx + Math.cos(angle) * (outerRadius + 2);
-  const startY = cy + Math.sin(angle) * (outerRadius + 2);
-  const extendedOffset = (dataLength ?? 0) > 6 ? 34 : 24;
-  const horizontalOffset = (dataLength ?? 0) > 6 ? 42 : 30;
-  const elbowX = cx + Math.cos(angle) * (outerRadius + extendedOffset);
-  const elbowY = cy + Math.sin(angle) * (outerRadius + extendedOffset);
-  const lineEndX = elbowX + (Math.cos(angle) >= 0 ? horizontalOffset : -horizontalOffset);
-  const textAnchor = Math.cos(angle) >= 0 ? "start" : "end";
-  const textX = lineEndX + (textAnchor === "start" ? 6 : -6);
-  const percentLabel = `${Math.round(percent * 100)}%`;
-
-  return (
-    <g>
-      <path
-        d={`M${startX},${startY} L${elbowX},${elbowY} L${lineEndX},${elbowY}`}
-        fill="none"
-        stroke={fill ?? "#ffffff"}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
-      <text
-        x={textX}
-        y={elbowY - 4}
-        textAnchor={textAnchor}
-        fontSize={16}
-        fontWeight={700}
-        fill="#f8fafc"
-        stroke="rgba(10,10,15,0.92)"
-        strokeWidth={4}
-        paintOrder="stroke"
-      >
-        {percentLabel}
-      </text>
-      <text
-        x={textX}
-        y={elbowY + 14}
-        textAnchor={textAnchor}
-        fontSize={11}
-        fill="rgba(248,250,252,0.82)"
-        stroke="rgba(10,10,15,0.92)"
-        strokeWidth={3}
-        paintOrder="stroke"
-      >
-        {name}
-      </text>
-    </g>
   );
 }

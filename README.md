@@ -12,11 +12,12 @@ A telemetry visualization platform built for the LILA Games Associate Product Ma
 - Heatmap source toggles for `Loot`, `Kills`, and `Position`
 - Position filtering for `Human Position` and `Bot Position`
 - Server-side position downsampling so movement heatmaps stay performant and comparable to loot and kill data
+- A cool-toned density gradient with a `Low` to `High` legend, reduced kernel radius, and transparency-preserving hotspot normalization
 - Skull-based death markers for normal deaths and storm deaths
 - Hover tooltips anchored above death markers for clearer zoomed inspection
 - Resizable map filter rail for long labels and controls
-- Telemetry pie charts with high-contrast tooltips
-- A full-width `Event Distribution` chart with a dedicated right-side legend and percentages
+- Telemetry pie charts with high-contrast tooltips, larger donut sizing, and inline right-side legends with percentages
+- A full-width `Event Distribution` chart that fills its panel cleanly without orphaned labels
 - Match replay and player profile views for deeper behavior review
 
 ## Core Use Cases
