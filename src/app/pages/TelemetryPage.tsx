@@ -220,7 +220,7 @@ export function TelemetryPage() {
               </ChartCard>
 
               <ChartCard title="Event Distribution" className="lg:col-span-2">
-                <DistributionPieChart data={overview.eventDistribution} />
+                <DistributionPieChart data={overview.eventDistribution} minLabelPercent={0.08} />
               </ChartCard>
             </div>
           </div>
@@ -274,7 +274,13 @@ export function TelemetryPage() {
   );
 }
 
-function DistributionPieChart({ data }: { data: { name: string; value: number }[] }) {
+function DistributionPieChart({
+  data,
+  minLabelPercent = 0,
+}: {
+  data: { name: string; value: number }[];
+  minLabelPercent?: number;
+}) {
   const total = data.reduce((sum, entry) => sum + entry.value, 0);
 
   return (
@@ -288,7 +294,7 @@ function DistributionPieChart({ data }: { data: { name: string; value: number }[
           outerRadius={92}
           paddingAngle={2}
           labelLine={false}
-          label={(props) => renderPieCallout({ ...props, total })}
+          label={(props) => renderPieCallout({ ...props, total, dataLength: data.length, minLabelPercent })}
         >
           {data.map((entry, index) => (
             <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
@@ -417,6 +423,8 @@ function renderPieCallout({
   percent,
   name,
   fill,
+  dataLength,
+  minLabelPercent,
 }: {
   cx?: number;
   cy?: number;
@@ -426,6 +434,8 @@ function renderPieCallout({
   name?: string;
   fill?: string;
   total?: number;
+  dataLength?: number;
+  minLabelPercent?: number;
 }) {
   if (
     cx === undefined ||
@@ -437,13 +447,19 @@ function renderPieCallout({
     return null;
   }
 
+  if (percent < (minLabelPercent ?? 0)) {
+    return null;
+  }
+
   const radian = Math.PI / 180;
   const angle = -midAngle * radian;
   const startX = cx + Math.cos(angle) * (outerRadius + 2);
   const startY = cy + Math.sin(angle) * (outerRadius + 2);
-  const elbowX = cx + Math.cos(angle) * (outerRadius + 24);
-  const elbowY = cy + Math.sin(angle) * (outerRadius + 24);
-  const lineEndX = elbowX + (Math.cos(angle) >= 0 ? 30 : -30);
+  const extendedOffset = (dataLength ?? 0) > 6 ? 34 : 24;
+  const horizontalOffset = (dataLength ?? 0) > 6 ? 42 : 30;
+  const elbowX = cx + Math.cos(angle) * (outerRadius + extendedOffset);
+  const elbowY = cy + Math.sin(angle) * (outerRadius + extendedOffset);
+  const lineEndX = elbowX + (Math.cos(angle) >= 0 ? horizontalOffset : -horizontalOffset);
   const textAnchor = Math.cos(angle) >= 0 ? "start" : "end";
   const textX = lineEndX + (textAnchor === "start" ? 6 : -6);
   const percentLabel = `${Math.round(percent * 100)}%`;

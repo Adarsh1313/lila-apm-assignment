@@ -1,53 +1,30 @@
 # LILA Player Journey Visualization Tool
 
-A web-based telemetry visualization platform built for the LILA Games Associate Product Manager assignment. The project helps level designers and product stakeholders inspect player movement, combat density, loot activity, match flow, and player behavior patterns across multiple maps using production telemetry data.
-
-## Live Demo
-
-[https://lila-apm-assignment-vw6f.vercel.app/](https://lila-apm-assignment-vw6f.vercel.app/)
+A telemetry visualization platform built for the LILA Games Associate Product Manager assignment. It helps level designers inspect player movement, combat density, loot concentration, death patterns, and behavior trends across multiple maps using production telemetry.
 
 ## Mixed Branch Preview
 
 [https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app/](https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app/)
 
-## Features
+## What The Current Preview Includes
 
-### Player Journey Visualization
+- Layered map heatmaps for `Loot`, `Kills`, and `Position`
+- Position heatmap split into `Human Position` and `Bot Position`
+- Overlay comparison so designers can combine multiple heatmaps at once
+- Skull-based death markers for normal deaths and storm deaths
+- Hover tooltips anchored above death markers for clearer zoomed inspection
+- Resizable map filter rail for long labels and controls
+- Telemetry pie charts with high-contrast tooltips and simplified percentage callouts
+- Full-width `Event Distribution` chart for denser event mixes
+- Match replay and player profile views for deeper behavior review
 
-Visualize player routes across matches and inspect how individual players move through each map over time.
+## Core Use Cases
 
-### Human vs Bot Distinction
-
-Separate humans and bots throughout the experience so behavior can be compared accurately across heatmaps, player profiles, telemetry views, and replay flows.
-
-### Event Markers
-
-The tool displays gameplay events including:
-
-- Kills
-- Deaths
-- Loot interactions
-- Storm deaths
-
-### Timeline Playback
-
-Replay sampled match timelines with event feeds, player movement, and timeline controls to understand the flow of encounters from multiple player perspectives.
-
-### Heatmaps
-
-Heatmap overlays highlight:
-
-- High loot areas
-- Combat hotspots
-- Death clusters
-
-### Filtering
-
-Matches can be filtered by:
-
-- Map
-- Date
-- Match ID
+- Compare traversal pressure against loot placement
+- Inspect combat hotspots against movement density
+- Separate bot behavior from human behavior
+- Spot neglected areas of the map by layering heatmaps together
+- Review event distributions and match flow at a telemetry-dashboard level
 
 ## Tech Stack
 
@@ -71,47 +48,9 @@ Matches can be filtered by:
 - Frontend: Vercel
 - Backend: Railway
 
-## Project Structure
+## Local Development
 
-```text
-lila-apm-assignment/
-├── backend/
-│   ├── config.py
-│   ├── data_loader.py
-│   ├── data_processor.py
-│   ├── main.py
-│   ├── models.py
-│   ├── requirements.txt
-│   ├── store.py
-│   ├── utils.py
-│   └── visualizations.py
-├── context/
-│   ├── Lila APM Written Test.pdf
-│   └── README.md
-├── guidelines/
-│   └── Guidelines.md
-├── src/
-│   ├── app/
-│   │   ├── components/
-│   │   ├── context/
-│   │   ├── lib/
-│   │   ├── pages/
-│   │   ├── App.tsx
-│   │   └── routes.tsx
-│   ├── styles/
-│   └── main.tsx
-├── .env.example
-├── .gitignore
-├── index.html
-├── package.json
-├── README.md
-├── vercel.json
-└── vite.config.ts
-```
-
-## Running the Project Locally
-
-### 1. Clone the Repository
+### 1. Clone The Repository
 
 ```bash
 git clone https://github.com/Adarsh1313/lila-apm-assignment.git
@@ -124,150 +63,88 @@ cd lila-apm-assignment
 npm install
 ```
 
-### 3. Create the Backend Virtual Environment
-
-```bash
-python -m venv backend/.venv
-```
-
-### 4. Install Backend Dependencies
+### 3. Create And Install The Backend Environment
 
 Windows:
 
 ```bash
+python -m venv backend/.venv
 backend\.venv\Scripts\pip install -r backend/requirements.txt
 ```
 
 macOS/Linux:
 
 ```bash
+python -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 ```
 
-## Backend Setup
-
-Create Python virtual environment:
-
-```bash
-python -m venv backend/.venv
-```
-
-Activate:
-
-macOS/Linux:
-
-```bash
-source backend/.venv/bin/activate
-```
-
-Windows:
-
-```bash
-backend\.venv\Scripts\activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r backend/requirements.txt
-```
-
-Run backend server:
+### 4. Run The Backend
 
 ```bash
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8010
 ```
 
-Backend runs at:
+Backend runs at [http://127.0.0.1:8010](http://127.0.0.1:8010)
 
-[http://127.0.0.1:8010](http://127.0.0.1:8010)
-
-## Frontend Setup
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Run development server:
+### 5. Run The Frontend
 
 ```bash
 npm run dev -- --host 127.0.0.1 --port 5174
 ```
 
-Frontend runs at:
-
-[http://127.0.0.1:5174](http://127.0.0.1:5174)
+Frontend runs at [http://127.0.0.1:5174](http://127.0.0.1:5174)
 
 ## Environment Variables
 
-Example `.env` file:
+Frontend:
 
 ```bash
 VITE_API_BASE_URL=http://127.0.0.1:8010
 ```
 
-For backend deployment, the following variables are also relevant:
+Backend:
 
 ```bash
 DATA_PATH=/path/to/player_data
-CORS_ORIGINS=https://your-frontend-domain.vercel.app
+CORS_ORIGINS=http://127.0.0.1:5174,https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app
 ```
 
-## Data Setup
+If you want the same Railway backend to serve both production and preview frontends, keep every allowed Vercel origin in `CORS_ORIGINS` as a comma-separated list.
 
-Telemetry data should be placed in:
+## Project Structure
 
 ```text
-backend/player_data
+lila-apm-assignment/
+|-- backend/
+|   |-- config.py
+|   |-- data_loader.py
+|   |-- data_processor.py
+|   |-- main.py
+|   |-- models.py
+|   |-- requirements.txt
+|   |-- store.py
+|   |-- utils.py
+|   `-- visualizations.py
+|-- context/
+|   |-- Lila APM Written Test.pdf
+|   `-- README.md
+|-- guidelines/
+|   `-- Guidelines.md
+|-- src/
+|   |-- app/
+|   |   |-- components/
+|   |   |-- context/
+|   |   |-- lib/
+|   |   |-- pages/
+|   |   |-- App.tsx
+|   |   `-- routes.tsx
+|   |-- styles/
+|   `-- main.tsx
+|-- .env.example
+|-- index.html
+|-- package.json
+|-- README.md
+|-- vercel.json
+`-- vite.config.ts
 ```
-
-Expected structure:
-
-```text
-player_data/
-├── February_10/
-├── February_11/
-├── February_12/
-├── February_13/
-├── February_14/
-└── minimaps/
-```
-
-Each day folder contains match telemetry files in parquet format using the `.nakama-0` suffix. The `minimaps/` folder must contain the three map images required by the backend and frontend.
-
-## Deployment Notes
-
-### Railway
-
-Recommended backend deploy settings:
-
-- Install command: `pip install -r backend/requirements.txt`
-- Start command: `python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
-
-### Vercel
-
-Recommended frontend deploy settings:
-
-- Framework preset: `Vite`
-- Build command: `npm run build`
-- Output directory: `dist`
-
-Set:
-
-```bash
-VITE_API_BASE_URL=https://your-backend-url.up.railway.app
-```
-
-## Future Improvements
-
-- Player route clustering
-- Loot interaction heatmaps
-- Squad behavior analysis
-- Real-time telemetry ingestion
-- Match comparison dashboards
-
-## Author
-
-Adarsh Bharathwaj

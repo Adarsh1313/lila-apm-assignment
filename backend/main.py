@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .config import get_allowed_origins, get_data_path
+from .config import get_allowed_origin_regex, get_allowed_origins, get_data_path
 from .models import FigureResponse, MatchSummary, PlayerJourneyResponse, PlayerMatchSummary, ReplayResponse
 from .store import DataStore, build_store
 from .utils import MAP_CONFIGS
@@ -47,6 +47,7 @@ app = FastAPI(title="LILA BLACK Backend", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
+    allow_origin_regex=get_allowed_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -319,6 +320,8 @@ def get_heatmap_points(
         filtered = filtered[filtered["event"].isin(["Kill", "BotKill"])]
     elif type == "deaths":
         filtered = filtered[filtered["event"].isin(["Killed", "BotKilled"])]
+    elif type == "position":
+        filtered = filtered[filtered["event"].isin(["Position", "BotPosition"])]
     else:
         raise HTTPException(status_code=400, detail="Unsupported heatmap type")
 
@@ -331,7 +334,15 @@ def get_heatmap_points(
             "player_type": "Human" if row["player_type"] == "human" else "Bot",
             "match_id": str(row["match_id"]),
             "survived_time": normalize_elapsed_seconds(float(row["ts_relative"])),
-            "kind": derive_kill_kind(str(row["event"]), str(row["player_type"])) if type == "kills" else None,
+            "kind": (
+                derive_kill_kind(str(row["event"]), str(row["player_type"]))
+                if type == "kills"
+                else (
+                    "human-position"
+                    if str(row["event"]) == "Position"
+                    else "bot-position" if str(row["event"]) == "BotPosition" else None
+                )
+            ),
             "event_name": str(row["event"]),
             "world_x": float(row["x"]),
             "world_z": float(row["z"]),

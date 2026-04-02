@@ -18,9 +18,10 @@ import {
 } from "../lib/data";
 import { useAppData } from "../context/AppDataContext";
 
-type ActiveLayer = "loot" | "kills" | "storm" | "deaths" | null;
 type KillType = "hh" | "hb" | "bh" | "bb";
 type DeathFilter = "all" | "human" | "bot";
+type HeatmapLayer = "loot" | "kills" | "position";
+type PositionFilter = "human" | "bot";
 
 type HoveredPoint = {
   point: HeatmapPoint;
@@ -56,10 +57,14 @@ export function MapAnalysisPage() {
   const [stats, setStats] = useState<GlobalStats | null>(null);
   const [lootPoints, setLootPoints] = useState<HeatmapPoint[]>([]);
   const [killPoints, setKillPoints] = useState<HeatmapPoint[]>([]);
+  const [positionPoints, setPositionPoints] = useState<HeatmapPoint[]>([]);
   const [deathPoints, setDeathPoints] = useState<HeatmapPoint[]>([]);
   const [stormPoints, setStormPoints] = useState<HeatmapPoint[]>([]);
-  const [activeLayer, setActiveLayer] = useState<ActiveLayer>("loot");
+  const [activeHeatmaps, setActiveHeatmaps] = useState<HeatmapLayer[]>(["loot"]);
+  const [showStormDeaths, setShowStormDeaths] = useState(false);
+  const [showDeaths, setShowDeaths] = useState(false);
   const [killTypes, setKillTypes] = useState<KillType[]>(["hh", "hb", "bh", "bb"]);
+  const [positionFilters, setPositionFilters] = useState<PositionFilter[]>(["human", "bot"]);
   const [deathFilter, setDeathFilter] = useState<DeathFilter>("all");
   const [showGrid, setShowGrid] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -109,9 +114,10 @@ export function MapAnalysisPage() {
       fetchStats(map.id, date, matchId),
       fetchHeatmap(map.id, "loot", date, matchId),
       fetchHeatmap(map.id, "kills", date, matchId),
+      fetchHeatmap(map.id, "position", date, matchId),
       fetchHeatmap(map.id, "deaths", date, matchId),
       fetchStormDeaths(map.id, date, matchId),
-    ]).then(([statsResult, lootResult, killResult, deathResult, stormResult]) => {
+    ]).then(([statsResult, lootResult, killResult, positionResult, deathResult, stormResult]) => {
       if (!active) {
         return;
       }
@@ -132,6 +138,12 @@ export function MapAnalysisPage() {
         setKillPoints(killResult.value);
       } else {
         console.error(`Failed to load kill heatmap for ${map.id}`, killResult.reason);
+      }
+
+      if (positionResult.status === "fulfilled") {
+        setPositionPoints(positionResult.value);
+      } else {
+        console.error(`Failed to load position heatmap for ${map.id}`, positionResult.reason);
       }
 
       if (deathResult.status === "fulfilled") {
@@ -201,6 +213,29 @@ export function MapAnalysisPage() {
     [killPoints, killTypes],
   );
 
+  const positionCounts = useMemo(
+    () => ({
+      all: positionPoints.length,
+      human: positionPoints.filter((point) => point.event_name === "Position").length,
+      bot: positionPoints.filter((point) => point.event_name === "BotPosition").length,
+    }),
+    [positionPoints],
+  );
+
+  const visiblePositionPoints = useMemo(
+    () =>
+      positionPoints.filter((point) => {
+        if (point.event_name === "Position") {
+          return positionFilters.includes("human");
+        }
+        if (point.event_name === "BotPosition") {
+          return positionFilters.includes("bot");
+        }
+        return true;
+      }),
+    [positionFilters, positionPoints],
+  );
+
   const visibleDeathPoints = useMemo(
     () =>
       deathPoints.filter((point) => {
@@ -214,6 +249,14 @@ export function MapAnalysisPage() {
 
   const lootHotspots = useMemo(() => aggregateHotspots(lootPoints, "loot", 28, 60, 126), [lootPoints]);
   const killHotspots = useMemo(() => aggregateHotspots(visibleKillPoints, "kill", 30, 66, 136), [visibleKillPoints]);
+  const humanPositionHotspots = useMemo(
+    () => aggregateHotspots(visiblePositionPoints.filter((point) => point.event_name === "Position"), "position-human", 34, 56, 128),
+    [visiblePositionPoints],
+  );
+  const botPositionHotspots = useMemo(
+    () => aggregateHotspots(visiblePositionPoints.filter((point) => point.event_name === "BotPosition"), "position-bot", 34, 56, 128),
+    [visiblePositionPoints],
+  );
 
   const measurement =
     measurePoints.length === 2
@@ -251,11 +294,16 @@ export function MapAnalysisPage() {
       value: formatDuration(stats?.avg_match_duration_seconds ?? 0),
     },
     { divider: true },
-    { label: "Total Kills", value: stats?.total_kills ?? 0, valueClass: "text-[var(--kill-red)]", active: activeLayer === "kills" },
-    { label: "Total Deaths", value: stats?.total_deaths ?? 0, valueClass: "text-[var(--death-orange)]", active: activeLayer === "deaths" },
-    { label: "Storm Deaths", value: stats?.storm_deaths ?? 0, valueClass: "text-[var(--storm-blue)]", active: activeLayer === "storm" },
-    { label: "Total Loot Events", value: stats?.total_loot_events ?? 0, valueClass: "text-[var(--loot-yellow)]", active: activeLayer === "loot" },
+    { label: "Total Kills", value: stats?.total_kills ?? 0, valueClass: "text-[var(--kill-red)]", active: activeHeatmaps.includes("kills") },
+    { label: "Total Deaths", value: stats?.total_deaths ?? 0, valueClass: "text-[var(--death-orange)]", active: showDeaths },
+    { label: "Storm Deaths", value: stats?.storm_deaths ?? 0, valueClass: "text-[var(--storm-blue)]", active: showStormDeaths },
+    { label: "Total Loot Events", value: stats?.total_loot_events ?? 0, valueClass: "text-[var(--loot-yellow)]", active: activeHeatmaps.includes("loot") },
+    { label: "Position Samples", value: positionCounts.all, valueClass: "text-[#4cf0ff]", active: activeHeatmaps.includes("position") },
   ];
+
+  const toggleHeatmap = (layer: HeatmapLayer) => {
+    setActiveHeatmaps((current) => (current.includes(layer) ? current.filter((entry) => entry !== layer) : [...current, layer]));
+  };
 
   const toggleMeasureMode = () => {
     setMeasurePoints([]);
@@ -284,9 +332,21 @@ export function MapAnalysisPage() {
             />
 
             <SectionTitle className="mt-5">Heatmaps</SectionTitle>
-            <RadioOption label="Loot" count={lootPoints.length} active={activeLayer === "loot"} color="var(--loot-yellow)" onClick={() => setActiveLayer("loot")} />
-            <RadioOption label="Kills" count={killPoints.length} active={activeLayer === "kills"} color="var(--kill-red)" onClick={() => setActiveLayer("kills")} />
-            {activeLayer === "kills" ? (
+            <ToggleOption
+              label="Loot"
+              count={lootPoints.length}
+              active={activeHeatmaps.includes("loot")}
+              color="var(--loot-yellow)"
+              onClick={() => toggleHeatmap("loot")}
+            />
+            <ToggleOption
+              label="Kills"
+              count={killPoints.length}
+              active={activeHeatmaps.includes("kills")}
+              color="var(--kill-red)"
+              onClick={() => toggleHeatmap("kills")}
+            />
+            {activeHeatmaps.includes("kills") ? (
               <div className="mb-3 ml-5 space-y-2">
                 {(Object.keys(killTypeLabels) as KillType[]).map((type) => (
                   <label
@@ -309,15 +369,57 @@ export function MapAnalysisPage() {
                 ))}
               </div>
             ) : null}
-            <RadioOption
+            <ToggleOption
+              label="Position"
+              count={positionCounts.all}
+              active={activeHeatmaps.includes("position")}
+              color="#4cf0ff"
+              onClick={() => toggleHeatmap("position")}
+            />
+            {activeHeatmaps.includes("position") ? (
+              <div className="mb-3 ml-5 space-y-2">
+                {[
+                  { value: "human", label: "Human Position", count: positionCounts.human, color: "#4cf0ff" },
+                  { value: "bot", label: "Bot Position", count: positionCounts.bot, color: "#ff63d8" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex min-w-0 items-center gap-2 rounded-md border border-transparent px-2 py-1 text-[11px] text-white/72 transition hover:border-white/8 hover:bg-white/4"
+                  >
+                    <input
+                      type="checkbox"
+                      className="shrink-0 accent-[var(--purple)]"
+                      checked={positionFilters.includes(option.value as PositionFilter)}
+                      onChange={() =>
+                        setPositionFilters((current) =>
+                          current.includes(option.value as PositionFilter)
+                            ? current.filter((entry) => entry !== option.value)
+                            : [...current, option.value as PositionFilter],
+                        )
+                      }
+                    />
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: option.color }} />
+                    <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                    <CountBadge count={option.count} />
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            <ToggleOption
               label="Storm Deaths"
               count={stormCounts.all}
-              active={activeLayer === "storm"}
+              active={showStormDeaths}
               color="var(--storm-blue)"
-              onClick={() => setActiveLayer("storm")}
+              onClick={() => setShowStormDeaths((current) => !current)}
             />
-            <RadioOption label="Deaths" count={deathCounts.all} active={activeLayer === "deaths"} color="var(--death-orange)" onClick={() => setActiveLayer("deaths")} />
-            {activeLayer === "deaths" ? (
+            <ToggleOption
+              label="Deaths"
+              count={deathCounts.all}
+              active={showDeaths}
+              color="var(--death-orange)"
+              onClick={() => setShowDeaths((current) => !current)}
+            />
+            {showDeaths ? (
               <div className="mb-3 ml-5 space-y-2">
                 {[
                   { value: "all", label: "All Deaths", count: deathCounts.all },
@@ -365,7 +467,9 @@ export function MapAnalysisPage() {
             </div>
             <ToolButton
               onClick={() => {
-                setActiveLayer(null);
+                setActiveHeatmaps([]);
+                setShowStormDeaths(false);
+                setShowDeaths(false);
                 setMeasureMode(false);
                 setMeasurePoints([]);
               }}
@@ -376,7 +480,12 @@ export function MapAnalysisPage() {
               onClick={() => {
                 setDate("All");
                 setMatchId("All");
-                setActiveLayer("loot");
+                setActiveHeatmaps(["loot"]);
+                setShowStormDeaths(false);
+                setShowDeaths(false);
+                setPositionFilters(["human", "bot"]);
+                setKillTypes(["hh", "hb", "bh", "bb"]);
+                setDeathFilter("all");
                 setShowGrid(false);
                 setHeatmapOpacity(70);
                 setMeasureMode(false);
@@ -436,54 +545,69 @@ export function MapAnalysisPage() {
 
                   {showGrid ? <GridOverlay /> : null}
 
-                  {activeLayer === "storm" || activeLayer === "deaths"
-                    ? (activeLayer === "storm" ? stormPoints : visibleDeathPoints).map((point) => (
-                        <button
-                          key={point.id}
-                          type="button"
-                          className="absolute z-20 text-center"
-                          style={{
-                            left: `${(point.x / 1024) * 100}%`,
-                            top: `${(point.y / 1024) * 100}%`,
-                            transform: "translate(-50%, -50%)",
-                            color: activeLayer === "storm" ? "var(--storm-blue)" : "var(--death-orange)",
-                            lineHeight: 1,
-                            opacity: heatmapOpacity / 100,
-                          }}
-                          onMouseEnter={() =>
-                            setHoveredPoint({
-                              point,
-                              label: activeLayer === "storm" ? "Storm Death" : "Death",
-                              x: point.x,
-                              y: point.y,
-                            })
-                          }
-                          onMouseLeave={() => setHoveredPoint(null)}
-                        >
-                          <Skull
-                            className="drop-shadow-[0_0_10px_rgba(0,0,0,0.35)]"
-                            size={activeLayer === "storm" ? 18 : 17}
-                            strokeWidth={2.3}
-                          />
-                        </button>
+                  {activeHeatmaps.includes("position")
+                    ? humanPositionHotspots.map((spot) => (
+                        <HeatSpot
+                          key={spot.key}
+                          spot={spot}
+                          color={`rgba(76, 240, 255, ${(0.18 + spot.intensity * 0.24) * (heatmapOpacity / 100)})`}
+                        />
                       ))
-                    : activeLayer === "kills"
-                      ? killHotspots.map((spot) => (
-                          <HeatSpot
-                            key={spot.key}
-                            spot={spot}
-                            color={`rgba(248, 81, 73, ${(0.24 + spot.intensity * 0.28) * (heatmapOpacity / 100)})`}
-                          />
-                        ))
-                      : activeLayer === "loot"
-                        ? lootHotspots.map((spot) => (
-                            <HeatSpot
-                              key={spot.key}
-                              spot={spot}
-                              color={`rgba(210, 153, 34, ${(0.2 + spot.intensity * 0.22) * (heatmapOpacity / 100)})`}
-                            />
-                          ))
-                        : null}
+                    : null}
+                  {activeHeatmaps.includes("position")
+                    ? botPositionHotspots.map((spot) => (
+                        <HeatSpot
+                          key={spot.key}
+                          spot={spot}
+                          color={`rgba(255, 99, 216, ${(0.16 + spot.intensity * 0.24) * (heatmapOpacity / 100)})`}
+                        />
+                      ))
+                    : null}
+                  {activeHeatmaps.includes("loot")
+                    ? lootHotspots.map((spot) => (
+                        <HeatSpot
+                          key={spot.key}
+                          spot={spot}
+                          color={`rgba(210, 153, 34, ${(0.24 + spot.intensity * 0.24) * (heatmapOpacity / 100)})`}
+                        />
+                      ))
+                    : null}
+                  {activeHeatmaps.includes("kills")
+                    ? killHotspots.map((spot) => (
+                        <HeatSpot
+                          key={spot.key}
+                          spot={spot}
+                          color={`rgba(248, 81, 73, ${(0.28 + spot.intensity * 0.26) * (heatmapOpacity / 100)})`}
+                        />
+                      ))
+                    : null}
+
+                  {showStormDeaths
+                    ? stormPoints.map((point) => (
+                        <SkullMarker
+                          key={point.id}
+                          point={point}
+                          color="var(--storm-blue)"
+                          label="Storm Death"
+                          opacity={heatmapOpacity / 100}
+                          size={18}
+                          onHover={setHoveredPoint}
+                        />
+                      ))
+                    : null}
+                  {showDeaths
+                    ? visibleDeathPoints.map((point) => (
+                        <SkullMarker
+                          key={point.id}
+                          point={point}
+                          color="var(--death-orange)"
+                          label="Death"
+                          opacity={heatmapOpacity / 100}
+                          size={17}
+                          onHover={setHoveredPoint}
+                        />
+                      ))
+                    : null}
 
                   {measurePoints.map((point, index) => (
                     <div
@@ -755,7 +879,7 @@ function LabeledSelect({
   );
 }
 
-function RadioOption({
+function ToggleOption({
   label,
   count,
   active,
@@ -771,11 +895,53 @@ function RadioOption({
   return (
     <button type="button" onClick={onClick} className="mb-3 flex w-full min-w-0 items-center gap-3 text-left">
       <span
-        className={`h-3.5 w-3.5 rounded-full border ${active ? "border-transparent" : "border-white/24"}`}
+        className={`h-3.5 w-3.5 rounded-sm border ${active ? "border-transparent" : "border-white/24"}`}
         style={{ background: active ? color : "transparent" }}
       />
       <span className={`min-w-0 flex-1 truncate font-display text-[12px] uppercase tracking-[0.18em] ${active ? "text-white" : "text-white/68"}`}>{label}</span>
       <CountBadge count={count} />
+    </button>
+  );
+}
+
+function SkullMarker({
+  point,
+  color,
+  label,
+  opacity,
+  size,
+  onHover,
+}: {
+  point: HeatmapPoint;
+  color: string;
+  label: string;
+  opacity: number;
+  size: number;
+  onHover: (value: HoveredPoint | null) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="absolute z-20 text-center"
+      style={{
+        left: `${(point.x / 1024) * 100}%`,
+        top: `${(point.y / 1024) * 100}%`,
+        transform: "translate(-50%, -50%)",
+        color,
+        lineHeight: 1,
+        opacity,
+      }}
+      onMouseEnter={() =>
+        onHover({
+          point,
+          label,
+          x: point.x,
+          y: point.y,
+        })
+      }
+      onMouseLeave={() => onHover(null)}
+    >
+      <Skull className="drop-shadow-[0_0_10px_rgba(0,0,0,0.35)]" size={size} strokeWidth={2.3} />
     </button>
   );
 }

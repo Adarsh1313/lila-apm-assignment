@@ -133,6 +133,8 @@ interface BackendMatchSummary extends MatchSummary {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "https://lila-apm-assignment-production.up.railway.app").replace(/\/$/, "");
+const TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [800, 1600, 3200];
 
 export const MAPS: MapMeta[] = [
   {
@@ -170,11 +172,44 @@ export const formatDuration = (seconds: number) => {
 };
 
 async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`);
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000 + attempt * 5000);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const error = new Error(`Request failed: ${response.status} ${response.statusText}`);
+        if (!TRANSIENT_STATUSES.has(response.status) || attempt === RETRY_DELAYS_MS.length) {
+          throw error;
+        }
+        lastError = error;
+      } else {
+        return response.json() as Promise<T>;
+      }
+    } catch (error) {
+      const requestError = error instanceof Error ? error : new Error(String(error));
+      const isAbortError = requestError.name === "AbortError";
+      const shouldRetry = isAbortError || attempt < RETRY_DELAYS_MS.length;
+      lastError = requestError;
+
+      if (!shouldRetry || attempt === RETRY_DELAYS_MS.length) {
+        throw requestError;
+      }
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
   }
-  return response.json() as Promise<T>;
+
+  throw lastError ?? new Error(`Request failed for ${path}`);
 }
 
 function qs(params: Record<string, string | undefined>) {
@@ -215,7 +250,7 @@ export async function fetchStats(mapId: MapId, date = "All", matchId = "All"): P
 
 export async function fetchHeatmap(
   mapId: MapId,
-  type: "loot" | "kills" | "deaths",
+  type: "loot" | "kills" | "deaths" | "position",
   date = "All",
   matchId = "All",
 ): Promise<HeatmapPoint[]> {
