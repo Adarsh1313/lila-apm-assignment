@@ -296,7 +296,18 @@ function DistributionPieChart({
       <div className="min-h-0 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-            <Pie data={entries} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={78} outerRadius={126} paddingAngle={2}>
+            <Pie
+              data={entries}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={78}
+              outerRadius={126}
+              paddingAngle={2}
+              labelLine={false}
+              label={(props) => renderCompactPieLabel({ ...props, dataLength: entries.length })}
+            >
               {entries.map((entry) => (
                 <Cell key={entry.name} fill={entry.color} />
               ))}
@@ -338,7 +349,7 @@ function EventDistributionChart({ data }: { data: { name: string; value: number 
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <InlineLegend entries={legendEntries} widthClass="w-full" />
+      <InlineLegend entries={legendEntries} widthClass="w-full" columns={2} compact />
     </div>
   );
 }
@@ -346,23 +357,85 @@ function EventDistributionChart({ data }: { data: { name: string; value: number 
 function InlineLegend({
   entries,
   widthClass = "",
+  columns = 1,
+  compact = false,
 }: {
   entries: { name: string; color: string; percent: number }[];
   widthClass?: string;
+  columns?: 1 | 2;
+  compact?: boolean;
 }) {
   return (
-    <div className={`panel-scroll min-h-0 overflow-y-auto rounded-md border border-[var(--border-subtle)] bg-black/18 p-3 ${widthClass}`}>
+    <div className={`min-h-0 overflow-hidden rounded-md border border-[var(--border-subtle)] bg-black/18 p-3 ${widthClass}`}>
       <div className="mb-3 font-display text-[10px] uppercase tracking-[0.24em] text-white/46">Legend</div>
-      <div className="space-y-2">
+      <div className={columns === 2 ? "grid grid-cols-2 gap-x-3 gap-y-2" : "space-y-2"}>
         {entries.map((entry) => (
-          <div key={entry.name} className="grid grid-cols-[12px,minmax(0,1fr),auto] items-start gap-2 text-[11px] text-white/74">
-            <span className="mt-1 h-3 w-3 rounded-sm" style={{ background: entry.color }} />
-            <span className="min-w-0 break-words">{entry.name}</span>
+          <div
+            key={entry.name}
+            className={`grid items-start gap-2 text-white/74 ${compact ? "grid-cols-[10px,minmax(0,1fr),auto] text-[10px]" : "grid-cols-[12px,minmax(0,1fr),auto] text-[11px]"}`}
+          >
+            <span className={`mt-1 rounded-sm ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`} style={{ background: entry.color }} />
+            <span className="min-w-0 break-words leading-tight">{entry.name}</span>
             <span className="whitespace-nowrap font-mono text-white/92">{entry.percent.toFixed(1)}%</span>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function renderCompactPieLabel({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+  dataLength,
+}: {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  percent?: number;
+  dataLength?: number;
+}) {
+  if (
+    cx === undefined ||
+    cy === undefined ||
+    midAngle === undefined ||
+    innerRadius === undefined ||
+    outerRadius === undefined ||
+    percent === undefined
+  ) {
+    return null;
+  }
+
+  if (percent < 0.12 || (dataLength ?? 0) > 5) {
+    return null;
+  }
+
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+  const radian = Math.PI / 180;
+  const x = cx + Math.cos(-midAngle * radian) * radius;
+  const y = cy + Math.sin(-midAngle * radian) * radius;
+
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={13}
+      fontWeight={700}
+      fill="#f8fafc"
+      stroke="rgba(10,10,15,0.88)"
+      strokeWidth={3}
+      paintOrder="stroke"
+    >
+      {`${Math.round(percent * 100)}%`}
+    </text>
   );
 }
 
