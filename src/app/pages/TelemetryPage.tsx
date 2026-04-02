@@ -15,28 +15,23 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { MapViewport } from "../components/MapViewport";
 import {
   DATE_OPTIONS,
   MAPS,
   fetchPctAliveSeries,
   fetchPlayerCountSeries,
-  fetchSpawnZones,
   fetchTelemetryOverview,
-  getMapMeta,
   type MapId,
   type OverviewTotals,
 } from "../lib/data";
 
-type Tab = "overview" | "player-counts" | "pct-alive" | "spawn-zones";
+type Tab = "overview" | "player-counts" | "pct-alive";
 
 const PIE_COLORS = ["#7b2fff", "#00e5ff", "#3fb950", "#f85149", "#d29922", "#60a5fa"];
 
 export function TelemetryPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [date, setDate] = useState("All");
-  const [spawnMap, setSpawnMap] = useState<MapId>("AmbroseValley");
-  const [zoom, setZoom] = useState(1);
   const [overview, setOverview] = useState<OverviewTotals>({
     totalMatches: 0,
     totalPlayers: 0,
@@ -62,58 +57,71 @@ export function TelemetryPage() {
     GrandRift: [],
     Lockdown: [],
   });
-  const [spawnPoints, setSpawnPoints] = useState<{ id: string; x: number; y: number; player_type: "Human" | "Bot" }[]>([]);
 
   useEffect(() => {
-    fetchTelemetryOverview().then(setOverview);
+    let active = true;
+
+    fetchTelemetryOverview()
+      .then((result) => {
+        if (active) {
+          setOverview(result);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load telemetry overview", error);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
-    Promise.all(MAPS.map((map) => fetchPlayerCountSeries(map.id, date))).then((results) => {
+    let active = true;
+
+    Promise.allSettled(MAPS.map((map) => fetchPlayerCountSeries(map.id, date))).then((results) => {
+      if (!active) {
+        return;
+      }
+
       setCountSeries({
-        AmbroseValley: results[0],
-        GrandRift: results[1],
-        Lockdown: results[2],
+        AmbroseValley: results[0].status === "fulfilled" ? results[0].value : [],
+        GrandRift: results[1].status === "fulfilled" ? results[1].value : [],
+        Lockdown: results[2].status === "fulfilled" ? results[2].value : [],
+      });
+
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(`Failed to load player counts for ${MAPS[index].id}`, result.reason);
+        }
       });
     });
 
-    Promise.all(MAPS.map((map) => fetchPctAliveSeries(map.id, date))).then((results) => {
+    Promise.allSettled(MAPS.map((map) => fetchPctAliveSeries(map.id, date))).then((results) => {
+      if (!active) {
+        return;
+      }
+
       setAliveSeries({
-        AmbroseValley: results[0],
-        GrandRift: results[1],
-        Lockdown: results[2],
+        AmbroseValley: results[0].status === "fulfilled" ? results[0].value : [],
+        GrandRift: results[1].status === "fulfilled" ? results[1].value : [],
+        Lockdown: results[2].status === "fulfilled" ? results[2].value : [],
+      });
+
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(`Failed to load pct alive series for ${MAPS[index].id}`, result.reason);
+        }
       });
     });
+
+    return () => {
+      active = false;
+    };
   }, [date]);
 
-  useEffect(() => {
-    fetchSpawnZones(spawnMap, date).then(setSpawnPoints);
-  }, [date, spawnMap]);
-
-  const combinedCounts = useMemo(
-    () =>
-      countSeries.AmbroseValley.map((entry, index) => ({
-        elapsed_seconds: entry.elapsed_seconds,
-        AmbroseValley: entry.count,
-        GrandRift: countSeries.GrandRift[index]?.count ?? 0,
-        Lockdown: countSeries.Lockdown[index]?.count ?? 0,
-      })),
-    [countSeries],
-  );
-
-  const combinedAlive = useMemo(
-    () =>
-      aliveSeries.AmbroseValley.map((entry, index) => ({
-        elapsed_seconds: entry.elapsed_seconds,
-        AmbroseValley: entry.pct_alive,
-        GrandRift: aliveSeries.GrandRift[index]?.pct_alive ?? 0,
-        Lockdown: aliveSeries.Lockdown[index]?.pct_alive ?? 0,
-      })),
-    [aliveSeries],
-  );
-
-  const spawnHumans = spawnPoints.filter((point) => point.player_type === "Human");
-  const spawnBots = spawnPoints.filter((point) => point.player_type === "Bot");
+  const combinedCounts = useMemo(() => mergeSeriesByElapsed(countSeries, "count"), [countSeries]);
+  const combinedAlive = useMemo(() => mergeSeriesByElapsed(aliveSeries, "pct_alive"), [aliveSeries]);
 
   const stats = [
     { label: "Total Matches", value: overview.totalMatches.toLocaleString() },
@@ -141,7 +149,6 @@ export function TelemetryPage() {
             ["overview", "Overview"],
             ["player-counts", "Player Counts"],
             ["pct-alive", "% Alive Over Time"],
-            ["spawn-zones", "Spawn Zones"],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -205,31 +212,15 @@ export function TelemetryPage() {
               </ChartCard>
 
               <ChartCard title="Map Distribution">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={overview.mapDistribution} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={2}>
-                      {overview.mapDistribution.map((entry, index) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                <DistributionPieChart data={overview.mapDistribution} />
               </ChartCard>
 
               <ChartCard title="Player Distribution">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={overview.playerDistribution} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={2}>
-                      {overview.playerDistribution.map((entry, index) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                <DistributionPieChart data={overview.playerDistribution} />
+              </ChartCard>
+
+              <ChartCard title="Event Distribution">
+                <DistributionPieChart data={overview.eventDistribution} />
               </ChartCard>
             </div>
           </div>
@@ -278,85 +269,35 @@ export function TelemetryPage() {
             }
           />
         ) : null}
-
-        {activeTab === "spawn-zones" ? (
-          <div className="grid h-full grid-rows-[auto,1fr,auto] gap-3 overflow-hidden">
-            <div className="flex items-center justify-between rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2">
-              <div className="flex flex-wrap gap-2">
-                {MAPS.map((map) => (
-                  <button
-                    key={map.id}
-                    type="button"
-                    onClick={() => setSpawnMap(map.id)}
-                    className={`rounded-full border px-3 py-1 font-display text-[10px] uppercase tracking-[0.22em] ${
-                      spawnMap === map.id
-                        ? "border-[var(--purple)] bg-[var(--purple)] text-white"
-                        : "border-[var(--border-subtle)] text-white/64"
-                    }`}
-                  >
-                    {map.label}
-                  </button>
-                ))}
-              </div>
-
-              <select
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                className="rounded-md border border-[var(--border-subtle)] bg-black/20 px-3 py-2 text-sm text-white"
-              >
-                {DATE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <MapViewport
-              imageUrl={getMapMeta(spawnMap).imageUrl}
-              zoom={zoom}
-              onZoomChange={setZoom}
-              onWheel={(delta) => setZoom((current) => Math.min(2.5, Math.max(0.75, current + (delta > 0 ? -0.1 : 0.1))))}
-            >
-              {spawnHumans.map((point) => (
-                <div
-                  key={point.id}
-                  className="absolute rounded-full blur-lg"
-                  style={{
-                    left: `${(point.x / 1024) * 100}%`,
-                    top: `${(point.y / 1024) * 100}%`,
-                    width: 28,
-                    height: 28,
-                    transform: "translate(-50%, -50%)",
-                    background: "rgba(210, 153, 34, 0.58)",
-                  }}
-                />
-              ))}
-              {spawnBots.map((point) => (
-                <div
-                  key={point.id}
-                  className="absolute rounded-full blur-lg"
-                  style={{
-                    left: `${(point.x / 1024) * 100}%`,
-                    top: `${(point.y / 1024) * 100}%`,
-                    width: 18,
-                    height: 18,
-                    transform: "translate(-50%, -50%)",
-                    background: "rgba(96, 165, 250, 0.64)",
-                  }}
-                />
-              ))}
-            </MapViewport>
-
-            <div className="flex items-center justify-between font-mono text-[12px] text-white/64">
-              <span>Humans: {spawnHumans.length}</span>
-              <span>Bots: {spawnBots.length}</span>
-              <span>Total: {spawnPoints.length}</span>
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
+  );
+}
+
+function DistributionPieChart({ data }: { data: { name: string; value: number }[] }) {
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart margin={{ top: 10, right: 40, bottom: 10, left: 40 }}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          innerRadius={58}
+          outerRadius={92}
+          paddingAngle={2}
+          labelLine={false}
+          label={(props) => renderPieCallout({ ...props, total })}
+        >
+          {data.map((entry, index) => (
+            <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip content={<PieTooltipContent total={total} />} />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -370,6 +311,30 @@ function extractSeriesKeys(rows: Array<Record<string, string | number>>) {
     });
   });
   return Array.from(keys);
+}
+
+function mergeSeriesByElapsed(
+  seriesByMap: Record<MapId, { elapsed_seconds: number; [key: string]: number }[]>,
+  valueKey: "count" | "pct_alive",
+) {
+  const rows = new Map<number, Record<string, string | number>>();
+
+  MAPS.forEach((map) => {
+    seriesByMap[map.id].forEach((entry) => {
+      const row = rows.get(entry.elapsed_seconds) ?? { elapsed_seconds: entry.elapsed_seconds };
+      row[map.id] = entry[valueKey] ?? 0;
+      rows.set(entry.elapsed_seconds, row);
+    });
+  });
+
+  return Array.from(rows.values())
+    .sort((a, b) => Number(a.elapsed_seconds) - Number(b.elapsed_seconds))
+    .map((row) => ({
+      elapsed_seconds: Number(row.elapsed_seconds),
+      AmbroseValley: Number(row.AmbroseValley ?? 0),
+      GrandRift: Number(row.GrandRift ?? 0),
+      Lockdown: Number(row.Lockdown ?? 0),
+    }));
 }
 
 function TelemetryChartPanel({
@@ -410,8 +375,113 @@ function ChartCard({ title, children }: { title: string; children: ReactNode }) 
 }
 
 const tooltipStyle = {
-  backgroundColor: "#12121a",
-  border: "1px solid rgba(255,255,255,0.08)",
+  backgroundColor: "#ffffff",
+  border: "1px solid rgba(15,23,42,0.12)",
   borderRadius: "8px",
-  color: "#ffffff",
+  color: "#111827",
+  boxShadow: "0 18px 40px rgba(0, 0, 0, 0.18)",
 };
+
+function PieTooltipContent({
+  active,
+  payload,
+  total,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; payload?: { name: string; value: number } }>;
+  total: number;
+}) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const entry = payload[0];
+  const value = Number(entry.value ?? entry.payload?.value ?? 0);
+  const name = entry.name ?? entry.payload?.name ?? "";
+  const percent = total > 0 ? (value / total) * 100 : 0;
+
+  return (
+    <div style={tooltipStyle} className="min-w-[140px] px-3 py-2 text-[12px]">
+      <div className="font-display text-[11px] uppercase tracking-[0.18em] text-black/65">{name}</div>
+      <div className="mt-1 font-mono text-[13px] font-semibold text-black">{value.toLocaleString()}</div>
+      <div className="mt-1 text-[12px] text-black/75">{percent.toFixed(1)}%</div>
+    </div>
+  );
+}
+
+function renderPieCallout({
+  cx,
+  cy,
+  midAngle,
+  outerRadius,
+  percent,
+  name,
+  fill,
+}: {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  outerRadius?: number;
+  percent?: number;
+  name?: string;
+  fill?: string;
+  total?: number;
+}) {
+  if (
+    cx === undefined ||
+    cy === undefined ||
+    midAngle === undefined ||
+    outerRadius === undefined ||
+    percent === undefined
+  ) {
+    return null;
+  }
+
+  const radian = Math.PI / 180;
+  const angle = -midAngle * radian;
+  const startX = cx + Math.cos(angle) * (outerRadius + 2);
+  const startY = cy + Math.sin(angle) * (outerRadius + 2);
+  const elbowX = cx + Math.cos(angle) * (outerRadius + 24);
+  const elbowY = cy + Math.sin(angle) * (outerRadius + 24);
+  const lineEndX = elbowX + (Math.cos(angle) >= 0 ? 30 : -30);
+  const textAnchor = Math.cos(angle) >= 0 ? "start" : "end";
+  const textX = lineEndX + (textAnchor === "start" ? 6 : -6);
+  const percentLabel = `${Math.round(percent * 100)}%`;
+
+  return (
+    <g>
+      <path
+        d={`M${startX},${startY} L${elbowX},${elbowY} L${lineEndX},${elbowY}`}
+        fill="none"
+        stroke={fill ?? "#ffffff"}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+      <text
+        x={textX}
+        y={elbowY - 4}
+        textAnchor={textAnchor}
+        fontSize={16}
+        fontWeight={700}
+        fill="#f8fafc"
+        stroke="rgba(10,10,15,0.92)"
+        strokeWidth={4}
+        paintOrder="stroke"
+      >
+        {percentLabel}
+      </text>
+      <text
+        x={textX}
+        y={elbowY + 14}
+        textAnchor={textAnchor}
+        fontSize={11}
+        fill="rgba(248,250,252,0.82)"
+        stroke="rgba(10,10,15,0.92)"
+        strokeWidth={3}
+        paintOrder="stroke"
+      >
+        {name}
+      </text>
+    </g>
+  );
+}
