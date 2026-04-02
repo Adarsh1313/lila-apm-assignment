@@ -279,6 +279,19 @@ function DistributionPieChart({
 }: {
   data: { name: string; value: number }[];
 }) {
+  return <UnifiedDonutChart data={data} />;
+}
+
+function EventDistributionChart({ data }: { data: { name: string; value: number }[] }) {
+  return <UnifiedDonutChart data={data} />;
+}
+
+function UnifiedDonutChart({
+  data,
+}: {
+  data: { name: string; value: number }[];
+}) {
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const entries = useMemo(
     () =>
       data
@@ -292,19 +305,24 @@ function DistributionPieChart({
   const total = entries.reduce((sum, entry) => sum + entry.value, 0);
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr),180px] gap-3">
-      <div className="min-h-0 min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="h-[280px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height={280}>
+          <PieChart>
             <Pie
               data={entries}
               dataKey="value"
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={78}
-              outerRadius={126}
+              outerRadius={110}
+              innerRadius={65}
               paddingAngle={2}
+              isAnimationActive={true}
+              activeIndex={activeIndex}
+              activeShape={renderActiveDonutShape}
+              onMouseEnter={(_, index) => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(-1)}
               labelLine={false}
               label={(props) => renderCompactPieLabel({ ...props, dataLength: entries.length })}
             >
@@ -316,67 +334,11 @@ function DistributionPieChart({
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <InlineLegend entries={entries.map((entry) => ({ name: entry.name, color: entry.color, percent: total > 0 ? (entry.value / total) * 100 : 0 }))} />
-    </div>
-  );
-}
-
-function EventDistributionChart({ data }: { data: { name: string; value: number }[] }) {
-  const entries = useMemo(
-    () =>
-      data
-        .filter((entry) => Number(entry.value) > 0)
-        .map((entry, index) => ({
-          ...entry,
-          color: PIE_COLORS[index % PIE_COLORS.length],
-        })),
-    [data],
-  );
-  const total = entries.reduce((sum, entry) => sum + entry.value, 0);
-  const legendEntries = entries.map((entry) => ({ name: entry.name, color: entry.color, percent: total > 0 ? (entry.value / total) * 100 : 0 }));
-
-  return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr),240px] gap-4">
-      <div className="min-h-0 min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-            <Pie data={entries} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={84} outerRadius={132} paddingAngle={2}>
-              {entries.map((entry) => (
-                <Cell key={entry.name} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip content={<PieTooltipContent total={total} />} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <InlineLegend entries={legendEntries} widthClass="w-full" columns={2} compact />
-    </div>
-  );
-}
-
-function InlineLegend({
-  entries,
-  widthClass = "",
-  columns = 1,
-  compact = false,
-}: {
-  entries: { name: string; color: string; percent: number }[];
-  widthClass?: string;
-  columns?: 1 | 2;
-  compact?: boolean;
-}) {
-  return (
-    <div className={`min-h-0 overflow-hidden rounded-md border border-[var(--border-subtle)] bg-black/18 p-3 ${widthClass}`}>
-      <div className="mb-3 font-display text-[10px] uppercase tracking-[0.24em] text-white/46">Legend</div>
-      <div className={columns === 2 ? "grid grid-cols-2 gap-x-3 gap-y-2" : "space-y-2"}>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-[#a0aec0]">
         {entries.map((entry) => (
-          <div
-            key={entry.name}
-            className={`grid items-start gap-2 text-white/74 ${compact ? "grid-cols-[10px,minmax(0,1fr),auto] text-[10px]" : "grid-cols-[12px,minmax(0,1fr),auto] text-[11px]"}`}
-          >
-            <span className={`mt-1 rounded-sm ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`} style={{ background: entry.color }} />
-            <span className="min-w-0 break-words leading-tight">{entry.name}</span>
-            <span className="whitespace-nowrap font-mono text-white/92">{entry.percent.toFixed(1)}%</span>
+          <div key={entry.name} className="flex min-w-0 items-center gap-2">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: entry.color }} />
+            <span className="truncate">{entry.name}</span>
           </div>
         ))}
       </div>
@@ -412,7 +374,7 @@ function renderCompactPieLabel({
     return null;
   }
 
-  if (percent < 0.12 || (dataLength ?? 0) > 5) {
+  if (percent < 0.15 || (dataLength ?? 0) > 4) {
     return null;
   }
 
@@ -505,19 +467,21 @@ function TelemetryChartPanel({
 
 function ChartCard({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <div className={`grid h-[320px] grid-rows-[auto,1fr] rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 ${className}`}>
+    <div className={`flex min-h-[390px] flex-col rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 ${className}`}>
       <div className="mb-3 font-display text-[14px] font-semibold uppercase tracking-[0.08em] text-[#a0aec0]">{title}</div>
-      <div className="h-full min-h-0">{children}</div>
+      <div className="min-h-0 flex-1">{children}</div>
     </div>
   );
 }
 
 const tooltipStyle = {
-  backgroundColor: "#ffffff",
-  border: "1px solid rgba(15,23,42,0.12)",
-  borderRadius: "8px",
-  color: "#111827",
-  boxShadow: "0 18px 40px rgba(0, 0, 0, 0.18)",
+  backgroundColor: "#1e2130",
+  border: "1px solid #3a3f55",
+  borderRadius: "6px",
+  color: "#e5e7eb",
+  padding: "8px 12px",
+  fontSize: "13px",
+  boxShadow: "0 18px 40px rgba(0, 0, 0, 0.24)",
 };
 
 function PieTooltipContent({
@@ -540,9 +504,65 @@ function PieTooltipContent({
 
   return (
     <div style={tooltipStyle} className="min-w-[140px] px-3 py-2 text-[12px]">
-      <div className="font-display text-[11px] uppercase tracking-[0.18em] text-black/65">{name}</div>
-      <div className="mt-1 font-mono text-[13px] font-semibold text-black">{value.toLocaleString()}</div>
-      <div className="mt-1 text-[12px] text-black/75">{percent.toFixed(1)}%</div>
+      <div className="font-display text-[11px] uppercase tracking-[0.18em] text-white/62">{name}</div>
+      <div className="mt-1 font-mono text-[13px] font-semibold text-white">{`${value.toLocaleString()} — ${percent.toFixed(1)}%`}</div>
     </div>
   );
+}
+
+function renderActiveDonutShape(props: {
+  cx?: number;
+  cy?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  startAngle?: number;
+  endAngle?: number;
+  fill?: string;
+}) {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+  if (
+    cx === undefined ||
+    cy === undefined ||
+    innerRadius === undefined ||
+    outerRadius === undefined ||
+    startAngle === undefined ||
+    endAngle === undefined
+  ) {
+    return null;
+  }
+
+  return (
+    <g>
+      <path
+        d={describeDonutArc(cx, cy, innerRadius, outerRadius + 8, startAngle, endAngle)}
+        fill={fill}
+        stroke="rgba(255,255,255,0.18)"
+        strokeWidth={2}
+      />
+    </g>
+  );
+}
+
+function describeDonutArc(cx: number, cy: number, innerRadius: number, outerRadius: number, startAngle: number, endAngle: number) {
+  const startOuter = polarToCartesian(cx, cy, outerRadius, endAngle);
+  const endOuter = polarToCartesian(cx, cy, outerRadius, startAngle);
+  const startInner = polarToCartesian(cx, cy, innerRadius, endAngle);
+  const endInner = polarToCartesian(cx, cy, innerRadius, startAngle);
+  const largeArcFlag = Math.abs(endAngle - startAngle) <= 180 ? "0" : "1";
+
+  return [
+    `M ${startOuter.x} ${startOuter.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${endOuter.x} ${endOuter.y}`,
+    `L ${endInner.x} ${endInner.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${startInner.x} ${startInner.y}`,
+    "Z",
+  ].join(" ");
+}
+
+function polarToCartesian(cx: number, cy: number, radius: number, angle: number) {
+  const radians = ((angle - 90) * Math.PI) / 180;
+  return {
+    x: cx + radius * Math.cos(radians),
+    y: cy + radius * Math.sin(radians),
+  };
 }
