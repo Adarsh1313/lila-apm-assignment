@@ -15,6 +15,7 @@ import {
 } from "../lib/data";
 
 type EventFilter = "kills" | "deaths" | "storm" | "loots";
+const DEFAULT_SHOWCASE_PLAYER_ID = "3e88c2aa-f4bb-4713-bc4b-332536e3de87";
 
 export function PlayerProfilesPage() {
   const [players, setPlayers] = useState<{ user_id: string; player_type: "Human" | "Bot" }[]>([]);
@@ -32,21 +33,58 @@ export function PlayerProfilesPage() {
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
-    fetchPlayers().then((result) => {
-      setPlayers(result);
-      setSelectedPlayerId(result[0]?.user_id ?? "");
-    });
+    let active = true;
+
+    fetchPlayers()
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        setPlayers(result);
+        const showcasePlayer = result.find((player) => player.user_id === DEFAULT_SHOWCASE_PLAYER_ID);
+        setSelectedPlayerId(showcasePlayer?.user_id ?? result[0]?.user_id ?? "");
+      })
+      .catch((error) => {
+        console.error("Failed to load players", error);
+        if (active) {
+          setPlayers([]);
+          setSelectedPlayerId("");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
     if (!selectedPlayerId) {
       return;
     }
-    fetchPlayerProfile(selectedPlayerId).then((result) => {
-      setProfile(result);
-      setLockedMatchId(null);
-      setPreviewMatchId(null);
-    });
+
+    let active = true;
+
+    fetchPlayerProfile(selectedPlayerId)
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        setProfile(result);
+        setLockedMatchId(null);
+        setPreviewMatchId(null);
+      })
+      .catch((error) => {
+        console.error(`Failed to load profile for ${selectedPlayerId}`, error);
+        if (active) {
+          setProfile(null);
+          setLockedMatchId(null);
+          setPreviewMatchId(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [selectedPlayerId]);
 
   const filteredMatches = useMemo(() => {
