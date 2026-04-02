@@ -107,54 +107,61 @@ export function MapAnalysisPage() {
 
     let active = true;
 
-    Promise.allSettled([
-      fetchStats(map.id, date, matchId),
-      fetchHeatmap(map.id, "loot", date, matchId),
-      fetchHeatmap(map.id, "kills", date, matchId),
-      fetchHeatmap(map.id, "position", date, matchId),
-      fetchHeatmap(map.id, "deaths", date, matchId),
-      fetchStormDeaths(map.id, date, matchId),
-    ]).then(([statsResult, lootResult, killResult, positionResult, deathResult, stormResult]) => {
-      if (!active) {
-        return;
-      }
+    setStats(null);
+    setLootPoints([]);
+    setKillPoints([]);
+    setPositionPoints([]);
+    setDeathPoints([]);
+    setStormPoints([]);
+    setHoveredPoint(null);
 
-      if (statsResult.status === "fulfilled") {
-        setStats(statsResult.value);
-      } else {
-        console.error(`Failed to load stats for ${map.id}`, statsResult.reason);
-      }
+    fetchStats(map.id, date, matchId)
+      .then((result) => {
+        if (active) {
+          setStats(result);
+        }
+      })
+      .catch((error) => console.error(`Failed to load stats for ${map.id}`, error));
 
-      if (lootResult.status === "fulfilled") {
-        setLootPoints(lootResult.value);
-      } else {
-        console.error(`Failed to load loot heatmap for ${map.id}`, lootResult.reason);
-      }
+    fetchHeatmap(map.id, "loot", date, matchId)
+      .then((result) => {
+        if (active) {
+          setLootPoints(result);
+        }
+      })
+      .catch((error) => console.error(`Failed to load loot heatmap for ${map.id}`, error));
 
-      if (killResult.status === "fulfilled") {
-        setKillPoints(killResult.value);
-      } else {
-        console.error(`Failed to load kill heatmap for ${map.id}`, killResult.reason);
-      }
+    fetchHeatmap(map.id, "kills", date, matchId)
+      .then((result) => {
+        if (active) {
+          setKillPoints(result);
+        }
+      })
+      .catch((error) => console.error(`Failed to load kill heatmap for ${map.id}`, error));
 
-      if (positionResult.status === "fulfilled") {
-        setPositionPoints(positionResult.value);
-      } else {
-        console.error(`Failed to load position heatmap for ${map.id}`, positionResult.reason);
-      }
+    fetchHeatmap(map.id, "position", date, matchId)
+      .then((result) => {
+        if (active) {
+          setPositionPoints(result);
+        }
+      })
+      .catch((error) => console.error(`Failed to load position heatmap for ${map.id}`, error));
 
-      if (deathResult.status === "fulfilled") {
-        setDeathPoints(deathResult.value);
-      } else {
-        console.error(`Failed to load death heatmap for ${map.id}`, deathResult.reason);
-      }
+    fetchHeatmap(map.id, "deaths", date, matchId)
+      .then((result) => {
+        if (active) {
+          setDeathPoints(result);
+        }
+      })
+      .catch((error) => console.error(`Failed to load death heatmap for ${map.id}`, error));
 
-      if (stormResult.status === "fulfilled") {
-        setStormPoints(stormResult.value);
-      } else {
-        console.error(`Failed to load storm deaths for ${map.id}`, stormResult.reason);
-      }
-    });
+    fetchStormDeaths(map.id, date, matchId)
+      .then((result) => {
+        if (active) {
+          setStormPoints(result);
+        }
+      })
+      .catch((error) => console.error(`Failed to load storm deaths for ${map.id}`, error));
 
     return () => {
       active = false;
@@ -323,7 +330,7 @@ export function MapAnalysisPage() {
   return (
     <div className="h-full overflow-hidden bg-[var(--bg-base)] p-4">
       <ResizablePanelGroup direction="horizontal" className="h-full">
-        <ResizablePanel defaultSize={19} minSize={14} maxSize={28}>
+        <ResizablePanel defaultSize={15} minSize={11} maxSize={24}>
           <aside className="flex h-full flex-col overflow-y-auto rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3">
             <SectionTitle>Filters</SectionTitle>
             <LabeledSelect label="Date" value={date} onChange={setDate} options={DATE_OPTIONS} />

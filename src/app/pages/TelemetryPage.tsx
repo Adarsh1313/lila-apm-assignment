@@ -27,7 +27,7 @@ import {
 
 type Tab = "overview" | "player-counts" | "pct-alive";
 
-const PIE_COLORS = ["#7b2fff", "#00e5ff", "#3fb950", "#f85149", "#d29922", "#60a5fa"];
+const PIE_COLORS = ["#7b2fff", "#00e5ff", "#3fb950", "#f85149", "#d29922", "#60a5fa", "#ff7ab8", "#2dd4bf", "#f97316", "#a3e635"];
 
 export function TelemetryPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -291,7 +291,6 @@ function UnifiedDonutChart({
 }: {
   data: { name: string; value: number }[];
 }) {
-  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const entries = useMemo(
     () =>
       data
@@ -319,10 +318,6 @@ function UnifiedDonutChart({
               innerRadius={65}
               paddingAngle={2}
               isAnimationActive={true}
-              activeIndex={activeIndex}
-              activeShape={renderActiveDonutShape}
-              onMouseEnter={(_, index) => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(-1)}
               labelLine={false}
               label={(props) => renderCompactPieLabel({ ...props, dataLength: entries.length })}
             >
@@ -508,61 +503,4 @@ function PieTooltipContent({
       <div className="mt-1 font-mono text-[13px] font-semibold text-white">{`${value.toLocaleString()} — ${percent.toFixed(1)}%`}</div>
     </div>
   );
-}
-
-function renderActiveDonutShape(props: {
-  cx?: number;
-  cy?: number;
-  innerRadius?: number;
-  outerRadius?: number;
-  startAngle?: number;
-  endAngle?: number;
-  fill?: string;
-}) {
-  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-  if (
-    cx === undefined ||
-    cy === undefined ||
-    innerRadius === undefined ||
-    outerRadius === undefined ||
-    startAngle === undefined ||
-    endAngle === undefined
-  ) {
-    return null;
-  }
-
-  return (
-    <g>
-      <path
-        d={describeDonutArc(cx, cy, innerRadius, outerRadius + 8, startAngle, endAngle)}
-        fill={fill}
-        stroke="rgba(255,255,255,0.18)"
-        strokeWidth={2}
-      />
-    </g>
-  );
-}
-
-function describeDonutArc(cx: number, cy: number, innerRadius: number, outerRadius: number, startAngle: number, endAngle: number) {
-  const startOuter = polarToCartesian(cx, cy, outerRadius, endAngle);
-  const endOuter = polarToCartesian(cx, cy, outerRadius, startAngle);
-  const startInner = polarToCartesian(cx, cy, innerRadius, endAngle);
-  const endInner = polarToCartesian(cx, cy, innerRadius, startAngle);
-  const largeArcFlag = Math.abs(endAngle - startAngle) <= 180 ? "0" : "1";
-
-  return [
-    `M ${startOuter.x} ${startOuter.y}`,
-    `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${endOuter.x} ${endOuter.y}`,
-    `L ${endInner.x} ${endInner.y}`,
-    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${startInner.x} ${startInner.y}`,
-    "Z",
-  ].join(" ");
-}
-
-function polarToCartesian(cx: number, cy: number, radius: number, angle: number) {
-  const radians = ((angle - 90) * Math.PI) / 180;
-  return {
-    x: cx + radius * Math.cos(radians),
-    y: cy + radius * Math.sin(radians),
-  };
 }

@@ -1,5 +1,5 @@
 import { Minus, Plus } from "lucide-react";
-import { type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 interface MapViewportProps {
   imageUrl: string;
@@ -24,6 +24,47 @@ export function MapViewport({
   children,
   footer,
 }: MapViewportProps) {
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
+
+  useEffect(() => {
+    if (zoom <= 1) {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [imageUrl, zoom]);
+
+  useEffect(() => {
+    if (!isDragging) {
+      return;
+    }
+
+    const handleMove = (event: MouseEvent) => {
+      if (!dragRef.current) {
+        return;
+      }
+      const deltaX = event.clientX - dragRef.current.x;
+      const deltaY = event.clientY - dragRef.current.y;
+      setPan({
+        x: dragRef.current.originX + deltaX,
+        y: dragRef.current.originY + deltaY,
+      });
+    };
+
+    const handleUp = () => {
+      dragRef.current = null;
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, [isDragging]);
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--bg-map)]">
       <div
@@ -32,7 +73,19 @@ export function MapViewport({
           event.preventDefault();
           onWheel?.(event.deltaY);
         }}
-        style={{ cursor }}
+        onMouseDown={(event) => {
+          if (zoom <= 1 || cursor === "crosshair") {
+            return;
+          }
+          dragRef.current = {
+            x: event.clientX,
+            y: event.clientY,
+            originX: pan.x,
+            originY: pan.y,
+          };
+          setIsDragging(true);
+        }}
+        style={{ cursor: zoom > 1 && cursor !== "crosshair" ? (isDragging ? "grabbing" : "grab") : cursor }}
       >
         <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
           <button
@@ -55,7 +108,7 @@ export function MapViewport({
         <div className="absolute inset-0 flex items-center justify-center p-3">
           <div
             className="relative aspect-square h-full max-w-full origin-center transition-transform duration-150"
-            style={{ transform: `scale(${zoom})` }}
+            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
           >
             <img
               src={imageUrl}
