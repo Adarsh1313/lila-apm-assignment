@@ -19,11 +19,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
 
 # DATA_PATH — points to where player_data was copied in this image.
-# Override in Railway Variables if using an external volume instead.
+# Override in your host's runtime variables if using external storage instead.
 ENV DATA_PATH=/app/backend/player_data
 
-# CORS_ORIGINS — set this in Railway → Variables to your Vercel URL
-ENV CORS_ORIGINS=https://lila-apm-assignment-vw6f.vercel.app
+# CORS_ORIGINS can be overridden in runtime variables if needed.
+ENV CORS_ORIGINS=https://lila-apm-assignment.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
+ENV CORS_ORIGIN_REGEX=^https://lila-apm-assignment.*\\.vercel\\.app$
 
 EXPOSE 8010
 

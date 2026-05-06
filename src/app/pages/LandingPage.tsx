@@ -12,13 +12,32 @@ export function LandingPage() {
   });
 
   useEffect(() => {
-    Promise.all(MAPS.map((map) => fetchStats(map.id))).then((results) => {
+    let active = true;
+
+    Promise.allSettled(MAPS.map((map) => fetchStats(map.id))).then((results) => {
+      if (!active) {
+        return;
+      }
+
       setStats({
-        AmbroseValley: { matches: results[0].matches, players: results[0].total_players },
-        GrandRift: { matches: results[1].matches, players: results[1].total_players },
-        Lockdown: { matches: results[2].matches, players: results[2].total_players },
+        AmbroseValley: {
+          matches: results[0].status === "fulfilled" ? results[0].value.matches : 0,
+          players: results[0].status === "fulfilled" ? results[0].value.total_players : 0,
+        },
+        GrandRift: {
+          matches: results[1].status === "fulfilled" ? results[1].value.matches : 0,
+          players: results[1].status === "fulfilled" ? results[1].value.total_players : 0,
+        },
+        Lockdown: {
+          matches: results[2].status === "fulfilled" ? results[2].value.matches : 0,
+          players: results[2].status === "fulfilled" ? results[2].value.total_players : 0,
+        },
       });
     });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (

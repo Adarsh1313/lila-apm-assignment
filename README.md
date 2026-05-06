@@ -2,9 +2,10 @@
 
 A telemetry visualization platform built for the LILA Games Associate Product Manager assignment. It helps level designers inspect player movement, combat density, loot concentration, death patterns, and behavior trends across multiple maps using production telemetry.
 
-## Mixed Branch Preview
+## Current Deployment
 
-[https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app/](https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app/)
+- Newer project: [https://lila-apm-assignment.vercel.app/](https://lila-apm-assignment.vercel.app/)
+- Legacy project: [https://lila-apm-assignment-vw6f.vercel.app/](https://lila-apm-assignment-vw6f.vercel.app/)
 
 ## What The Current Preview Includes
 
@@ -48,7 +49,7 @@ A telemetry visualization platform built for the LILA Games Associate Product Ma
 ### Deployment
 
 - Frontend: Vercel
-- Backend: Railway
+- Backend: Railway currently, with Northflank migration prepared
 
 ## Local Development
 
@@ -109,12 +110,13 @@ Backend:
 
 ```bash
 DATA_PATH=/path/to/player_data
-CORS_ORIGINS=http://127.0.0.1:5174,https://lila-apm-assignment-vw6f-git-mixed-adarsh1313s-projects.vercel.app
+CORS_ORIGINS=http://127.0.0.1:5174,https://lila-apm-assignment.vercel.app
+CORS_ORIGIN_REGEX=^https://lila-apm-assignment.*\.vercel\.app$
 ```
 
-If you want the same Railway backend to serve both production and preview frontends, keep every allowed Vercel origin in `CORS_ORIGINS` as a comma-separated list.
+If you want the same backend to serve both production and preview frontends, keep every allowed Vercel origin in `CORS_ORIGINS` as a comma-separated list, or use `CORS_ORIGIN_REGEX` for Vercel preview URLs.
 
-If you deploy backend updates for the mixed preview, redeploy Railway as well so any heatmap sampling changes are reflected in the frontend preview.
+See [NORTHFLANK_DEPLOYMENT.md](./NORTHFLANK_DEPLOYMENT.md) for the planned Northflank backend deployment checklist.
 
 ## Project Structure
 

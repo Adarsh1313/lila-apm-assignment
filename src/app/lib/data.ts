@@ -132,7 +132,7 @@ interface BackendMatchSummary extends MatchSummary {
   total_players?: number;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "https://lila-apm-assignment-production.up.railway.app").replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8010").replace(/\/$/, "");
 const TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const RETRY_DELAYS_MS = [800, 1600, 3200];
 

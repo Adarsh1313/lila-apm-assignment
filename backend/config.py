@@ -16,6 +16,11 @@ def get_data_path() -> Path:
 def get_allowed_origins() -> list[str]:
     raw_value = os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174",
+        "https://lila-apm-assignment.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174",
     )
     return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+
+
+def get_allowed_origin_regex() -> str | None:
+    raw_value = os.getenv("CORS_ORIGIN_REGEX", r"^https://lila-apm-assignment.*\.vercel\.app$").strip()
+    return raw_value or None

@@ -30,23 +30,57 @@ export function MatchReplayPage() {
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchMatches().then((result) => {
-      setMatches(result);
-      setSelectedMatchId(result[0]?.match_id ?? "");
-    });
+    let active = true;
+
+    fetchMatches()
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        setMatches(result);
+        setSelectedMatchId(result[0]?.match_id ?? "");
+      })
+      .catch((error) => {
+        console.error("Failed to load replay matches", error);
+        if (active) {
+          setMatches([]);
+          setSelectedMatchId("");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
     if (!selectedMatchId) {
       return;
     }
-    fetchReplayMatch(selectedMatchId).then((result) => {
-      setReplay(result);
-      setCurrentTime(0);
-      setIsPlaying(false);
-      setSelectedPlayerId(null);
-      setPlaybackSpeed(0.5);
-    });
+
+    let active = true;
+
+    fetchReplayMatch(selectedMatchId)
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        setReplay(result);
+        setCurrentTime(0);
+        setIsPlaying(false);
+        setSelectedPlayerId(null);
+        setPlaybackSpeed(0.5);
+      })
+      .catch((error) => {
+        console.error(`Failed to load replay for ${selectedMatchId}`, error);
+        if (active) {
+          setReplay(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [selectedMatchId]);
 
   useEffect(() => {
