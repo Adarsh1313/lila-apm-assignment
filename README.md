@@ -5,7 +5,6 @@ A telemetry visualization platform built for the LILA Games Associate Product Ma
 ## Current Deployment
 
 - Newer project: [https://lila-apm-assignment.vercel.app/](https://lila-apm-assignment.vercel.app/)
-- Legacy project: [https://lila-apm-assignment-vw6f.vercel.app/](https://lila-apm-assignment-vw6f.vercel.app/)
 
 ## What The Current Preview Includes
 

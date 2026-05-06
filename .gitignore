@@ -18,3 +18,4 @@ backend/server-8010.err
 .agent/
 .DS_Store
 Thumbs.db
+.vercel
